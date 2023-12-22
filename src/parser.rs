@@ -24,6 +24,6 @@ impl<'a> Parser<'a> for StrictHTMLParser {
     type Error = nom::Err<nom::error::Error<&'a str>>;
 
     fn parse(text: &'a str) -> Result<Vec<Self::Node>, Self::Error> {
-        crate::parse::parse(text).map(|r| r.1)
+        nom::combinator::all_consuming(crate::parse::parse)(text).map(|r| r.1)
     }
 }
