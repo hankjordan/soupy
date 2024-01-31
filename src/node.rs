@@ -60,12 +60,12 @@ impl<S> HTMLNode<S> {
     /// assert_eq!(div.get("class"), Some("foo bar"));
     /// ```
     #[must_use]
-    pub fn get<Q>(&self, name: &Q) -> Option<&S>
+    pub fn get<'a, Q>(&self, name: &'a Q) -> Option<&S>
     where
-        S: Ord + std::borrow::Borrow<Q>,
-        Q: Ord + ?Sized,
+        S: Ord + From<&'a Q>,
+        Q: ?Sized,
     {
-        self.attrs().and_then(|a| a.get(name))
+        self.attrs().and_then(|a| a.get(&name.into()))
     }
 }
 
