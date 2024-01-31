@@ -5,7 +5,6 @@
 /// Filters for use in search queries
 pub mod filter;
 mod node;
-mod parse;
 /// Parser traits allow you to search different formats.
 pub mod parser;
 mod pattern;
