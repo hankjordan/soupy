@@ -39,6 +39,19 @@ impl<'a> Soup<'a, StrictHTMLParser> {
     }
 }
 
+#[cfg(feature = "lenient")]
+impl<'a> Soup<'a, crate::parser::LenientHTMLParser> {
+    /// Creates a new `Soup` instance from a string slice.
+    #[allow(clippy::missing_panics_doc)]
+    #[must_use]
+    pub fn lenient(text: &'a str) -> Self {
+        Self {
+            nodes: crate::parser::LenientHTMLParser::parse(text).unwrap(),
+            _marker: PhantomData,
+        }
+    }
+}
+
 impl<'a, P: Parser<'a>> Soup<'a, P> {
     /// Attempts use the [`Parser`] to create a new `Soup` instance from a string slice.
     ///

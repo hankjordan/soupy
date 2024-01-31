@@ -1,6 +1,6 @@
 mod html;
 
-pub use html::StrictHTMLParser;
+pub use html::*;
 
 /// Used to convert a string into a [`Vec`] of nodes.
 pub trait Parser<'a> {

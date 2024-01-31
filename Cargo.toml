@@ -8,9 +8,11 @@ readme = "README.md"
 repository = "https://github.com/hankjordan/soupy"
 
 [features]
-default = ["regex"]
+default = ["regex", "lenient"]
 regex = ["dep:regex"]
+lenient = ["dep:scraper"]
 
 [dependencies]
 nom = "7.1"
 regex = { version = "1.9", optional = true }
+scraper = { version = "0.18", optional = true }

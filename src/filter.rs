@@ -80,6 +80,30 @@ where
     }
 }
 
+#[cfg(feature = "lenient")]
+impl<N, V> Filter<scraper::Node> for Attr<N, V>
+where
+    N: Pattern,
+    V: Pattern,
+{
+    fn matches(&self, node: &scraper::Node) -> bool {
+        if let Some(attrs) = match node {
+            scraper::Node::Element(e) => Some(e.attrs()),
+            _ => None,
+        } {
+            for (name, value) in attrs {
+                if self.name.matches(name) && self.value.matches(value) {
+                    return true;
+                }
+            }
+
+            false
+        } else {
+            false
+        }
+    }
+}
+
 /// Filters elements by tag
 pub struct Tag<P> {
     pub tag: P,
@@ -96,6 +120,25 @@ where
             HTMLNode::Element { name, .. }
             | HTMLNode::RawElement { name, .. }
             | HTMLNode::Void { name, .. } => Some(name),
+            _ => None,
+        } {
+            self.tag.matches(name)
+        } else {
+            false
+        }
+    }
+}
+
+#[cfg(feature = "lenient")]
+impl<P> Filter<scraper::Node> for Tag<P>
+where
+    P: Pattern,
+{
+    fn matches(&self, node: &scraper::Node) -> bool {
+        if let Some(pattern) = self.tag.as_bool() {
+            pattern
+        } else if let Some(name) = match node {
+            scraper::Node::Element(e) => Some(e.name()),
             _ => None,
         } {
             self.tag.matches(name)
