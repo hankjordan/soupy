@@ -2,38 +2,35 @@ use std::collections::BTreeMap;
 
 /// An HTML node
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum HTMLNode<'a> {
+pub enum HTMLNode<S> {
     /// A comment, like `<!-- ... -->`
-    Comment(&'a str),
+    Comment(S),
     /// The doctype, like `<!DOCTYPE ...>`
-    Doctype(&'a str),
+    Doctype(S),
     /// A standard element, like `<p> ... </p>`
     Element {
-        name: &'a str,
-        attrs: BTreeMap<&'a str, &'a str>,
-        children: Vec<HTMLNode<'a>>,
+        name: S,
+        attrs: BTreeMap<S, S>,
+        children: Vec<HTMLNode<S>>,
     },
     /// An element that contains code, like `<script> ... </script>`
     RawElement {
-        name: &'a str,
-        attrs: BTreeMap<&'a str, &'a str>,
-        content: &'a str,
+        name: S,
+        attrs: BTreeMap<S, S>,
+        content: S,
     },
     /// A void element that is unable to contain children, like `<input>`
-    Void {
-        name: &'a str,
-        attrs: BTreeMap<&'a str, &'a str>,
-    },
+    Void { name: S, attrs: BTreeMap<S, S> },
     /// Raw text
-    Text(&'a str),
+    Text(S),
 }
 
-impl<'a> HTMLNode<'a> {
+impl<S> HTMLNode<S> {
     /// Retrieves the name of the node
     ///
     /// Only returns [`Some`] for [`Node::Element`], [`Node::RawElement`], or [`Node::Void`].
     #[must_use]
-    pub fn name(&self) -> Option<&str> {
+    pub fn name(&self) -> Option<&S> {
         match self {
             Self::Element { name, .. }
             | Self::RawElement { name, .. }
@@ -44,7 +41,7 @@ impl<'a> HTMLNode<'a> {
 
     /// Returns the node's attributes as a [`BTreeMap`]
     #[must_use]
-    pub fn attrs(&self) -> Option<&BTreeMap<&str, &str>> {
+    pub fn attrs(&self) -> Option<&BTreeMap<S, S>> {
         match self {
             Self::Element { attrs, .. }
             | Self::RawElement { attrs, .. }
@@ -63,20 +60,24 @@ impl<'a> HTMLNode<'a> {
     /// assert_eq!(div.get("class"), Some("foo bar"));
     /// ```
     #[must_use]
-    pub fn get(&self, name: &str) -> Option<&str> {
-        self.attrs().and_then(|a| a.get(name)).copied()
+    pub fn get<Q>(&self, name: &Q) -> Option<&S>
+    where
+        S: Ord + std::borrow::Borrow<Q>,
+        Q: Ord + ?Sized,
+    {
+        self.attrs().and_then(|a| a.get(name))
     }
 }
 
 /// An [`Iterator`] over a [`Node`] and its children.
-pub struct HTMLNodeIter<'a> {
-    node: &'a HTMLNode<'a>,
-    child: Option<Box<HTMLNodeIter<'a>>>,
+pub struct HTMLNodeIter<'a, S> {
+    node: &'a HTMLNode<S>,
+    child: Option<Box<HTMLNodeIter<'a, S>>>,
     next: Option<usize>,
 }
 
-impl<'a> Iterator for HTMLNodeIter<'a> {
-    type Item = &'a HTMLNode<'a>;
+impl<'a, S> Iterator for HTMLNodeIter<'a, S> {
+    type Item = &'a HTMLNode<S>;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
@@ -105,9 +106,9 @@ impl<'a> Iterator for HTMLNodeIter<'a> {
     }
 }
 
-impl<'a> IntoIterator for &'a HTMLNode<'a> {
-    type Item = &'a HTMLNode<'a>;
-    type IntoIter = HTMLNodeIter<'a>;
+impl<'a, S> IntoIterator for &'a HTMLNode<S> {
+    type Item = &'a HTMLNode<S>;
+    type IntoIter = HTMLNodeIter<'a, S>;
 
     fn into_iter(self) -> Self::IntoIter {
         HTMLNodeIter {

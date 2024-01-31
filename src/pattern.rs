@@ -19,54 +19,56 @@
 /// let result = soup.tag(MyType("div".to_string())).first().expect("Couldn't find div with id foo");
 /// assert_eq!(result.get("id"), Some("foo"));
 /// ```
-pub trait Pattern {
+pub trait Pattern<S> {
     /// Matches the `Pattern` with the value `haystack`
-    fn matches(&self, _haystack: &str) -> bool;
+    fn matches(&self, haystack: &S) -> bool;
 
-    #[doc(hidden)]
-    fn as_bool(&self) -> Option<bool> {
+    /// If `Some`, skip the match and return the value
+    fn bypass(&self) -> Option<bool> {
         None
     }
 
-    #[doc(hidden)]
-    fn as_str(&self) -> Option<&str> {
+    /// Convert the pattern into the haystack's type
+    fn value(&self) -> Option<S> {
         None
     }
 }
 
-impl Pattern for bool {
-    fn matches(&self, _haystack: &str) -> bool {
+impl<S> Pattern<S> for bool {
+    fn matches(&self, _haystack: &S) -> bool {
         *self
     }
+}
 
-    fn as_bool(&self) -> Option<bool> {
-        Some(*self)
+impl<'a, S> Pattern<S> for &'a str
+where
+    S: AsRef<str> + From<&'a str>,
+{
+    fn matches(&self, haystack: &S) -> bool {
+        &haystack.as_ref() == self
+    }
+
+    fn value(&self) -> Option<S> {
+        Some((*self).into())
     }
 }
 
-impl<'a> Pattern for &'a str {
-    fn matches(&self, haystack: &str) -> bool {
-        *self == haystack
-    }
+// impl<S> Pattern<S> for String
+// where
+//     S: AsRef<str> + From<String>,
+// {
+//     fn matches(&self, haystack: &S) -> bool {
+//         *self == haystack
+//     }
 
-    fn as_str(&self) -> Option<&str> {
-        Some(self)
-    }
-}
+//     fn value(&self) -> Option<S> {
+//         Some(self)
+//     }
+// }
 
-impl Pattern for String {
-    fn matches(&self, haystack: &str) -> bool {
-        *self == haystack
-    }
-
-    fn as_str(&self) -> Option<&str> {
-        Some(self)
-    }
-}
-
-#[cfg(feature = "regex")]
-impl Pattern for regex::Regex {
-    fn matches(&self, haystack: &str) -> bool {
-        self.is_match(haystack)
-    }
-}
+// #[cfg(feature = "regex")]
+// impl Pattern for regex::Regex {
+//     fn matches(&self, haystack: &str) -> bool {
+//         self.is_match(haystack)
+//     }
+// }

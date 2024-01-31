@@ -34,7 +34,8 @@ use crate::HTMLNode;
 pub struct StrictHTMLParser;
 
 impl<'a> crate::parser::Parser<'a> for StrictHTMLParser {
-    type Node = HTMLNode<'a>;
+    type Text = &'a str;
+    type Node = HTMLNode<Self::Text>;
     type Error = nom::Err<nom::error::Error<&'a str>>;
 
     fn parse(text: &'a str) -> Result<Vec<Self::Node>, Self::Error> {
@@ -64,11 +65,11 @@ fn take_to<'a, E: nom::error::ParseError<&'a str>>(
     terminated(take_until(i), tag(i))
 }
 
-fn comment(i: &str) -> IResult<&str, HTMLNode> {
+fn comment(i: &str) -> IResult<&str, HTMLNode<&str>> {
     map(preceded(tag("<!--"), take_to("-->")), HTMLNode::Comment)(i)
 }
 
-fn doctype(i: &str) -> IResult<&str, HTMLNode> {
+fn doctype(i: &str) -> IResult<&str, HTMLNode<&str>> {
     map(
         preceded(tag_no_case("<!doctype "), take_to(">")),
         HTMLNode::Doctype,
@@ -112,7 +113,7 @@ where
     )
 }
 
-fn void(i: &str) -> IResult<&str, HTMLNode> {
+fn void(i: &str) -> IResult<&str, HTMLNode<&str>> {
     map(
         start_tag(alt((
             tag_no_case("area"),
@@ -136,7 +137,7 @@ fn void(i: &str) -> IResult<&str, HTMLNode> {
     )(i)
 }
 
-fn raw_element(i: &str) -> IResult<&str, HTMLNode> {
+fn raw_element(i: &str) -> IResult<&str, HTMLNode<&str>> {
     let start = start_tag(alt((tag_no_case("script"), tag_no_case("style"))))(i)?;
 
     let (left, (name, attrs, closed)) = start;
@@ -165,7 +166,7 @@ fn raw_element(i: &str) -> IResult<&str, HTMLNode> {
     }))
 }
 
-fn element(i: &str) -> IResult<&str, HTMLNode> {
+fn element(i: &str) -> IResult<&str, HTMLNode<&str>> {
     let start = start_tag(alphanumeric1)(i)?;
 
     let (left, (name, attrs, closed)) = start;
@@ -194,15 +195,15 @@ fn element(i: &str) -> IResult<&str, HTMLNode> {
     }))
 }
 
-fn text(i: &str) -> IResult<&str, HTMLNode> {
+fn text(i: &str) -> IResult<&str, HTMLNode<&str>> {
     map(map(is_not("<"), str::trim), HTMLNode::Text)(i)
 }
 
-fn single(i: &str) -> IResult<&str, HTMLNode> {
+fn single(i: &str) -> IResult<&str, HTMLNode<&str>> {
     alt((comment, doctype, void, raw_element, element, text))(i)
 }
 
-pub(crate) fn parse(i: &str) -> IResult<&str, Vec<HTMLNode>> {
+pub(crate) fn parse(i: &str) -> IResult<&str, Vec<HTMLNode<&str>>> {
     many0(ws(single))(i)
 }
 

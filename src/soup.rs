@@ -66,7 +66,7 @@ impl<'a, P: Parser<'a>> Soup<'a, P> {
 }
 
 impl<'a, P: Parser<'a>> QueryExt<'a, P, ()> for &'a Soup<'a, P> {
-    fn tag<T: Pattern>(self, tag: T) -> Query<'a, P, And<(), Tag<T>>>
+    fn tag<T: Pattern<P::Text>>(self, tag: T) -> Query<'a, P, And<(), Tag<T>>>
     where
         Tag<T>: Filter<P::Node>,
     {
@@ -76,7 +76,11 @@ impl<'a, P: Parser<'a>> QueryExt<'a, P, ()> for &'a Soup<'a, P> {
         }
     }
 
-    fn attr<N: Pattern, V: Pattern>(self, name: N, value: V) -> Query<'a, P, And<(), Attr<N, V>>>
+    fn attr<N: Pattern<P::Text>, V: Pattern<P::Text>>(
+        self,
+        name: N,
+        value: V,
+    ) -> Query<'a, P, And<(), Attr<N, V>>>
     where
         Attr<N, V>: Filter<P::Node>,
     {

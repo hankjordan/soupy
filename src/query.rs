@@ -29,7 +29,7 @@ pub trait QueryExt<'a, P: Parser<'a>, F: Filter<P::Node>>: Sized {
     /// let result = soup.tag("b").first().expect("Couldn't find tag 'b'");
     /// assert_eq!(result.get("id"), Some("bold-tag"));
     /// ```
-    fn tag<T: Pattern>(self, tag: T) -> Query<'a, P, And<F, Tag<T>>>
+    fn tag<T: Pattern<P::Text>>(self, tag: T) -> Query<'a, P, And<F, Tag<T>>>
     where
         Tag<T>: Filter<P::Node>;
 
@@ -41,7 +41,7 @@ pub trait QueryExt<'a, P: Parser<'a>, F: Filter<P::Node>>: Sized {
     /// let soup = Soup::new(r#"<div>Test</div><section><b id="bold-tag">SOME BOLD TEXT</b></section>"#).unwrap();
     /// let result = soup.attr("id", "bold-tag").first().expect("Couldn't find tag with id 'bold-tag'");
     /// assert_eq!(result.name(), Some("b"));
-    fn attr<N: Pattern, V: Pattern>(self, name: N, value: V) -> Query<'a, P, And<F, Attr<N, V>>>
+    fn attr<N: Pattern<P::Text>, V: Pattern<P::Text>>(self, name: N, value: V) -> Query<'a, P, And<F, Attr<N, V>>>
     where
         Attr<N, V>: Filter<P::Node>;
 
@@ -54,7 +54,7 @@ pub trait QueryExt<'a, P: Parser<'a>, F: Filter<P::Node>>: Sized {
     /// let result = soup.attr_name("id").first().expect("Couldn't find element with an 'id'");
     /// assert_eq!(result.name(), Some("b"));
     /// ```
-    fn attr_name<N: Pattern>(self, name: N) -> Query<'a, P, And<F, Attr<N, bool>>>
+    fn attr_name<N: Pattern<P::Text>>(self, name: N) -> Query<'a, P, And<F, Attr<N, bool>>>
     where
         Attr<N, bool>: Filter<P::Node>,
     {
@@ -70,7 +70,7 @@ pub trait QueryExt<'a, P: Parser<'a>, F: Filter<P::Node>>: Sized {
     /// let result = soup.attr_value("bold-tag").first().expect("Couldn't find a tag with attribute value 'bold-tag'");
     /// assert_eq!(result.name(), Some("b"));
     /// ```
-    fn attr_value<V: Pattern>(self, value: V) -> Query<'a, P, And<F, Attr<bool, V>>>
+    fn attr_value<V: Pattern<P::Text>>(self, value: V) -> Query<'a, P, And<F, Attr<bool, V>>>
     where
         Attr<bool, V>: Filter<P::Node>,
     {
@@ -87,8 +87,9 @@ pub trait QueryExt<'a, P: Parser<'a>, F: Filter<P::Node>>: Sized {
     /// let soup = Soup::new(r#"<div>Test</div><section class="content"><b id="bold-tag">SOME BOLD TEXT</b></section>"#).unwrap();
     /// let result = soup.class("content").first().expect("Couldn't find tag with class 'content'");
     /// assert_eq!(result.name(), Some("section"));
-    fn class<C: Pattern>(self, class: C) -> Query<'a, P, And<F, Attr<&'static str, C>>>
+    fn class<C: Pattern<P::Text>>(self, class: C) -> Query<'a, P, And<F, Attr<&'static str, C>>>
     where
+        P::Text: AsRef<str> + From<&'static str>,
         Attr<&'static str, C>: Filter<P::Node>,
     {
         self.attr("class", class)
@@ -133,7 +134,7 @@ pub trait QueryExt<'a, P: Parser<'a>, F: Filter<P::Node>>: Sized {
 }
 
 impl<'a, P: Parser<'a>, F: Filter<P::Node>> QueryExt<'a, P, F> for Query<'a, P, F> {
-    fn tag<T: Pattern>(self, tag: T) -> Query<'a, P, And<F, Tag<T>>>
+    fn tag<T: Pattern<P::Text>>(self, tag: T) -> Query<'a, P, And<F, Tag<T>>>
     where
         Tag<T>: Filter<P::Node>,
     {
@@ -143,7 +144,7 @@ impl<'a, P: Parser<'a>, F: Filter<P::Node>> QueryExt<'a, P, F> for Query<'a, P, 
         }
     }
 
-    fn attr<N: Pattern, V: Pattern>(self, name: N, value: V) -> Query<'a, P, And<F, Attr<N, V>>>
+    fn attr<N: Pattern<P::Text>, V: Pattern<P::Text>>(self, name: N, value: V) -> Query<'a, P, And<F, Attr<N, V>>>
     where
         Attr<N, V>: Filter<P::Node>,
     {
