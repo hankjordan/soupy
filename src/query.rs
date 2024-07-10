@@ -7,6 +7,7 @@ use crate::{
         Filter,
         Tag,
     },
+    node::MapTreeIter,
     parser::Parser,
     Node,
     Pattern,
@@ -194,7 +195,7 @@ impl<'x, 'a, P: Parser<'a>> QueryExt<'x, 'a, P, ()> for &'x Soup<'a, P> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct QueryItem<'x, 'a, P: Parser<'a>> {
     item: &'x P::Node,
 }
@@ -221,21 +222,36 @@ impl<'x, 'a, P> Queryable<'a, P> for &'x QueryItem<'x, 'a, P>
 where
     P: Parser<'a>,
     P::Node: Clone,
-    &'x P::Node: IntoIterator<Item = &'x P::Node>,
 {
     fn query(self) -> Soup<'a, P> {
         Soup {
-            nodes: self.item.into_iter().cloned().collect(),
+            nodes: self.item.children().to_vec(),
             _marker: PhantomData,
         }
     }
 }
 
 /// An [`Iterator`] over matching elements
-pub struct QueryIter<'x, 'a, I, P: Parser<'a>, F: Filter<P::Node>> {
-    pub(crate) filter: F,
-    pub(crate) iter: I,
-    pub(crate) _marker: PhantomData<(&'x (), &'a (), P)>,
+pub struct QueryIter<'x, 'a: 'x, I: Iterator<Item = &'x P::Node>, P: Parser<'a>, F: Filter<P::Node>>
+{
+    filter: F,
+    iter: std::iter::Flatten<MapTreeIter<'x, I>>,
+    _marker: PhantomData<(&'x (), &'a (), P)>,
+}
+
+impl<'x, 'a, I, P, F> QueryIter<'x, 'a, I, P, F>
+where
+    I: Iterator<Item = &'x P::Node>,
+    P: Parser<'a>,
+    F: Filter<P::Node>,
+{
+    pub(crate) fn new(filter: F, iter: I) -> Self {
+        Self {
+            filter,
+            iter: MapTreeIter::new(iter).flatten(),
+            _marker: PhantomData,
+        }
+    }
 }
 
 impl<'x, 'a, I, P, F> Iterator for QueryIter<'x, 'a, I, P, F>
@@ -243,7 +259,6 @@ where
     I: Iterator<Item = &'x P::Node>,
     P: Parser<'a>,
     P::Node: 'x,
-    &'x P::Node: IntoIterator<Item = &'x P::Node>,
     F: Filter<P::Node>,
 {
     type Item = QueryItem<'x, 'a, P>;
@@ -261,17 +276,12 @@ where
 impl<'x, 'a, P, F> IntoIterator for Query<'x, 'a, P, F>
 where
     P: Parser<'a>,
-    &'x P::Node: IntoIterator<Item = &'x P::Node>,
     F: Filter<P::Node>,
 {
     type Item = QueryItem<'x, 'a, P>;
-    type IntoIter = QueryIter<'x, 'a, std::iter::Flatten<std::slice::Iter<'x, P::Node>>, P, F>;
+    type IntoIter = QueryIter<'x, 'a, std::slice::Iter<'x, P::Node>, P, F>;
 
     fn into_iter(self) -> Self::IntoIter {
-        QueryIter {
-            filter: self.filter,
-            iter: self.soup.nodes.iter().flatten(),
-            _marker: PhantomData,
-        }
+        QueryIter::new(self.filter, self.soup.nodes.iter())
     }
 }

@@ -22,8 +22,8 @@ impl<'a> Parser<'a> for XMLParser {
     }
 }
 
-/// Represents an XML element.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// Represents an XML element
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct XMLElement {
     /// This elements prefix, if any
     pub prefix: Option<String>,
@@ -32,18 +32,12 @@ pub struct XMLElement {
     pub namespace: Option<String>,
 
     /// The full list of namespaces, if any
-    ///
-    /// The `Namespace` type is exported from the `xml-rs` crate.
     pub namespaces: Option<Namespace>,
 
-    /// The name of the Element.  Does not include any namespace info
+    /// The name of the Element
     pub name: String,
 
     /// The Element attributes
-    ///
-    /// By default, this is a `HashMap`, but if the optional "attribute-order" feature is enabled,
-    /// this is an [IndexMap](https://docs.rs/indexmap/1.4.0/indexmap/), which will retain
-    /// item insertion order.
     pub attributes: BTreeMap<String, String>,
 
     /// Children
@@ -111,57 +105,15 @@ impl Node for XMLNode {
 }
 
 impl XMLNode {
-    /// Iterate over child nodes
-    #[must_use]
-    pub fn iter(&self) -> XMLNodeIter {
-        XMLNodeIter {
-            node: self,
-            child: None,
-            next: None,
-        }
-    }
-}
-
-/// An [`Iterator`] over an [`XMLNode`] and its children.
-pub struct XMLNodeIter<'a> {
-    node: &'a XMLNode,
-    child: Option<Box<XMLNodeIter<'a>>>,
-    next: Option<usize>,
-}
-
-impl<'a> Iterator for XMLNodeIter<'a> {
-    type Item = &'a XMLNode;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            if let Some(child) = self.child.as_mut() {
-                if let Some(next) = child.next() {
-                    return Some(next);
-                }
-
-                self.child = None;
-            } else if let Some(next) = self.next {
-                if let XMLNode::Element(XMLElement { children, .. }) = self.node {
-                    if let Some(child) = children.get(next) {
-                        self.child = Some(Box::new(child.into_iter()));
-                        self.next = Some(next + 1);
-                    } else {
-                        return None;
-                    }
-                } else {
-                    return None;
-                }
-            } else {
-                self.next = Some(0);
-                return Some(self.node);
-            }
-        }
+    /// Iterate over direct children
+    pub fn iter(&self) -> std::slice::Iter<Self> {
+        self.children().iter()
     }
 }
 
 impl<'a> IntoIterator for &'a XMLNode {
     type Item = &'a XMLNode;
-    type IntoIter = XMLNodeIter<'a>;
+    type IntoIter = std::slice::Iter<'a, XMLNode>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
@@ -172,10 +124,11 @@ impl<'a> IntoIterator for &'a XMLNode {
 mod tests {
     use std::ops::Deref;
 
+    use super::*;
     use crate::*;
 
     const HELLO: &str = r#"<?xml version="1.0" encoding="utf-8"?>
-<root xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<root>
     <simple>Here's some text</simple>
     <complex id="hello">
         <nested>Nested text!</nested>
@@ -190,7 +143,7 @@ mod tests {
 </root>"#;
 
     #[test]
-    fn test_iterator() {
+    fn test_tree_iter() {
         let soup = Soup::xml(HELLO).expect("Failed to parse XML");
 
         let complex = soup
@@ -200,11 +153,62 @@ mod tests {
             .deref()
             .clone();
 
-        let mut nodes = complex.iter();
-
-        // Node iterator must start with parent element, then recurse over children depth first.
-        // TODO: replace with special trait?
+        let mut nodes = complex.tree();
 
         assert_eq!(nodes.next().unwrap().name(), Some(&"complex".into()));
+
+        assert_eq!(
+            nodes.next().unwrap(),
+            &XMLNode::Element(XMLElement {
+                name: "nested".into(),
+                children: vec![XMLNode::Text("Nested text!".into())],
+                ..Default::default()
+            })
+        );
+
+        assert_eq!(nodes.next().unwrap(), &XMLNode::Text("Nested text!".into()));
+
+        assert_eq!(
+            nodes.next().unwrap(),
+            &XMLNode::Element(XMLElement {
+                name: "example".into(),
+                children: vec![XMLNode::Text("More text".into())],
+                ..Default::default()
+            })
+        );
+
+        assert_eq!(nodes.next().unwrap(), &XMLNode::Text("More text".into()));
+    }
+
+    #[test]
+    fn test_direct_iter() {
+        let soup = Soup::xml(HELLO).expect("Failed to parse XML");
+
+        let complex = soup
+            .tag("complex")
+            .first()
+            .expect("Could not find 'complex' tag")
+            .deref()
+            .clone();
+
+        let mut nodes = complex.into_iter();
+
+        assert_eq!(
+            nodes.next().unwrap(),
+            &XMLNode::Element(XMLElement {
+                name: "nested".into(),
+                children: vec![XMLNode::Text("Nested text!".into())],
+                ..Default::default()
+            })
+        );
+
+        assert_eq!(
+            nodes.next().unwrap(),
+            &XMLNode::Element(XMLElement {
+                name: "example".into(),
+                children: vec![XMLNode::Text("More text".into())],
+                ..Default::default()
+            })
+        );
     }
 }

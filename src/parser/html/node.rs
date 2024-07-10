@@ -59,56 +59,15 @@ impl<S> Node for HTMLNode<S> {
 }
 
 impl<S> HTMLNode<S> {
-    /// Iterate over child nodes
-    pub fn iter(&self) -> HTMLNodeIter<S> {
-        HTMLNodeIter {
-            node: self,
-            child: None,
-            next: None,
-        }
-    }
-}
-
-/// An [`Iterator`] over a [`Node`] and its children.
-pub struct HTMLNodeIter<'a, S> {
-    node: &'a HTMLNode<S>,
-    child: Option<Box<HTMLNodeIter<'a, S>>>,
-    next: Option<usize>,
-}
-
-impl<'a, S> Iterator for HTMLNodeIter<'a, S> {
-    type Item = &'a HTMLNode<S>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            if let Some(child) = self.child.as_mut() {
-                if let Some(next) = child.next() {
-                    return Some(next);
-                }
-
-                self.child = None;
-            } else if let Some(next) = self.next {
-                if let HTMLNode::Element { children, .. } = self.node {
-                    if let Some(child) = children.get(next) {
-                        self.child = Some(Box::new(child.into_iter()));
-                        self.next = Some(next + 1);
-                    } else {
-                        return None;
-                    }
-                } else {
-                    return None;
-                }
-            } else {
-                self.next = Some(0);
-                return Some(self.node);
-            }
-        }
+    /// Iterate over direct children
+    pub fn iter(&self) -> std::slice::Iter<Self> {
+        self.children().iter()
     }
 }
 
 impl<'a, S> IntoIterator for &'a HTMLNode<S> {
     type Item = &'a HTMLNode<S>;
-    type IntoIter = HTMLNodeIter<'a, S>;
+    type IntoIter = std::slice::Iter<'a, HTMLNode<S>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
@@ -153,7 +112,7 @@ mod tests {
 </html>"#;
 
     #[test]
-    fn test_iterator() {
+    fn test_tree_iter() {
         let soup = Soup::html_strict(HELLO).expect("Failed to parse HTML");
 
         let body = soup
@@ -163,10 +122,7 @@ mod tests {
             .deref()
             .clone();
 
-        let mut nodes = body.iter();
-
-        // Node iterator must start with parent element, then recurse over children depth first.
-        // TODO: replace with special trait?
+        let mut nodes = body.tree();
 
         assert_eq!(nodes.next().unwrap().name(), Some(&"body"));
 
@@ -177,6 +133,32 @@ mod tests {
         });
 
         assert_eq!(nodes.next().unwrap(), &HTMLNode::Text("Hello World!"));
+
+        assert_eq!(nodes.next().unwrap(), &HTMLNode::Element {
+            name: "p",
+            attrs: BTreeMap::default(),
+            children: vec![HTMLNode::Text("This is a simple paragraph.")]
+        });
+    }
+
+    #[test]
+    fn test_direct_iter() {
+        let soup = Soup::html_strict(HELLO).expect("Failed to parse HTML");
+
+        let body = soup
+            .tag("body")
+            .first()
+            .expect("Could not find body tag")
+            .deref()
+            .clone();
+
+        let mut nodes = body.into_iter();
+
+        assert_eq!(nodes.next().unwrap(), &HTMLNode::Element {
+            name: "h1",
+            attrs: BTreeMap::default(),
+            children: vec![HTMLNode::Text("Hello World!")]
+        });
 
         assert_eq!(nodes.next().unwrap(), &HTMLNode::Element {
             name: "p",

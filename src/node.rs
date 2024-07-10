@@ -1,4 +1,7 @@
-use std::collections::BTreeMap;
+use std::{
+    collections::BTreeMap,
+    marker::PhantomData,
+};
 
 pub trait Node: Sized {
     type Text;
@@ -30,6 +33,37 @@ pub trait Node: Sized {
 
     /// Direct children of the node
     fn children(&self) -> &[Self];
+
+    /// Depth-first iterator over children of the node, including the root
+    fn tree(&self) -> TreeIter<Self> {
+        TreeIter::new(self)
+    }
+}
+
+pub(crate) struct MapTreeIter<'a, I> {
+    iter: I,
+    _marker: PhantomData<&'a ()>,
+}
+
+impl<'a, I> MapTreeIter<'a, I> {
+    pub(crate) fn new(iter: I) -> Self {
+        Self {
+            iter,
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<'a, I, N> Iterator for MapTreeIter<'a, I>
+where
+    N: 'a,
+    I: Iterator<Item = &'a N>,
+{
+    type Item = TreeIter<'a, N>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next().map(|n| TreeIter::new(n))
+    }
 }
 
 pub struct TreeIter<'a, N> {

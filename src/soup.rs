@@ -67,18 +67,13 @@ impl<'x, 'a, P> Soup<'a, P>
 where
     P: Parser<'a>,
     P::Node: 'x,
-    &'x P::Node: IntoIterator<Item = &'x P::Node>,
 {
     /// Query the data.
     #[must_use]
     pub fn iter(
         &'x self,
-    ) -> QueryIter<'x, 'a, std::iter::Flatten<std::slice::Iter<'x, P::Node>>, P, ()> {
-        QueryIter {
-            filter: (),
-            iter: self.nodes.iter().flatten(),
-            _marker: PhantomData,
-        }
+    ) -> QueryIter<'x, 'a, std::slice::Iter<'x, P::Node>, P, ()> {
+        QueryIter::new((), self.nodes.iter())
     }
 }
 
@@ -86,10 +81,9 @@ impl<'x, 'a, P> IntoIterator for &'x Soup<'a, P>
 where
     P: Parser<'a>,
     P::Node: 'x,
-    &'x P::Node: IntoIterator<Item = &'x P::Node>,
 {
     type Item = QueryItem<'x, 'a, P>;
-    type IntoIter = QueryIter<'x, 'a, std::iter::Flatten<std::slice::Iter<'x, P::Node>>, P, ()>;
+    type IntoIter = QueryIter<'x, 'a, std::slice::Iter<'x, P::Node>, P, ()>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
