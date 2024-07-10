@@ -10,6 +10,7 @@ use crate::Node;
 
 /// Used to convert a string into a [`Vec`] of nodes.
 pub trait Parser<'a> {
+    /// The node type.
     type Node: Node + 'a;
     /// The error thrown when parsing fails.
     type Error;

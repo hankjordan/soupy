@@ -5,7 +5,7 @@ use crate::parser::{
     Parser,
 };
 
-/// Lenient HTML parser.
+/// Lenient HTML parser
 ///
 /// Attempts to work through invalid HTML.
 #[derive(Clone, Debug)]

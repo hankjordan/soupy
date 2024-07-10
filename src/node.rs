@@ -3,7 +3,9 @@ use std::{
     marker::PhantomData,
 };
 
+/// Basic queryable unit of the data structure
 pub trait Node: Sized {
+    /// Type of text values returned
     type Text;
 
     /// Returns the name of the node

@@ -27,7 +27,7 @@ use nom::{
 
 use crate::parser::html::HTMLNode;
 
-/// Default HTML parser.
+/// Simple, strict HTML parser
 ///
 /// Errors on malformed HTML.
 #[derive(Clone, Debug)]

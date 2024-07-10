@@ -7,6 +7,9 @@ use crate::{
     Node,
 };
 
+/// Default XML parser
+/// 
+/// Errors on malformed XML.
 #[derive(Clone, Debug)]
 pub struct XMLParser;
 
@@ -57,12 +60,22 @@ impl From<xmltree::Element> for XMLElement {
     }
 }
 
+/// Represents an XML node
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum XMLNode {
+    /// XML element which can contain children nodes
     Element(XMLElement),
+
+    /// Comment
     Comment(String),
+
+    /// CDATA
     CData(String),
+
+    /// Text
     Text(String),
+
+    /// Processing Instruction
     ProcessingInstruction(String, Option<String>),
 }
 

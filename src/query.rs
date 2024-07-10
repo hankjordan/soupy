@@ -16,8 +16,8 @@ use crate::{
 
 /// A query for elements in [`Soup`](`crate::Soup`) matching the [`Filter`](`crate::filter::Filter`) `F`
 pub struct Query<'x, 'a, P: Parser<'a>, F: Filter<P::Node>> {
-    pub filter: F,
-    pub soup: &'x Soup<'a, P>,
+    filter: F,
+    soup: &'x Soup<'a, P>,
 }
 
 /// Allows you to query for sub-elements matching the given [`Filter`](`crate::filter::Filter`)
@@ -195,6 +195,7 @@ impl<'x, 'a, P: Parser<'a>> QueryExt<'x, 'a, P, ()> for &'x Soup<'a, P> {
     }
 }
 
+/// Item returned by a [`Query`]
 #[derive(Debug, Copy, Clone)]
 pub struct QueryItem<'x, 'a, P: Parser<'a>> {
     item: &'x P::Node,
@@ -211,10 +212,12 @@ where
     }
 }
 
+/// Type that can be turned into [`Soup`] and queried
 pub trait Queryable<'a, P>
 where
     P: Parser<'a>,
 {
+    /// Convert the type into one that can be queried
     fn query(self) -> Soup<'a, P>;
 }
 

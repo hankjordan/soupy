@@ -43,7 +43,10 @@ where
 
 /// Filters elements by attribute
 pub struct Attr<N, V> {
+    /// Attribute name pattern
     pub name: N,
+
+    /// Attribute value pattern
     pub value: V,
 }
 
@@ -79,6 +82,7 @@ where
 
 /// Filters elements by tag
 pub struct Tag<P> {
+    /// Tag pattern
     pub tag: P,
 }
 

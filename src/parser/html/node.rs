@@ -11,18 +11,29 @@ pub enum HTMLNode<S> {
     Doctype(S),
     /// A standard element, like `<p> ... </p>`
     Element {
+        /// Name
         name: S,
+        /// Attributes
         attrs: BTreeMap<S, S>,
+        /// Direct children
         children: Vec<HTMLNode<S>>,
     },
     /// An element that contains code, like `<script> ... </script>`
     RawElement {
+        /// Name
         name: S,
+        /// Attributes
         attrs: BTreeMap<S, S>,
+        /// Raw content contained by the element
         content: S,
     },
     /// A void element that is unable to contain children, like `<input>`
-    Void { name: S, attrs: BTreeMap<S, S> },
+    Void {
+        /// Name
+        name: S,
+        /// Attributes
+        attrs: BTreeMap<S, S>,
+    },
     /// Raw text
     Text(S),
 }
