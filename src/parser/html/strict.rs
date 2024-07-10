@@ -25,7 +25,7 @@ use nom::{
     Parser,
 };
 
-use crate::HTMLNode;
+use crate::parser::html::HTMLNode;
 
 /// Default HTML parser.
 ///
@@ -50,7 +50,7 @@ where
     is_not(r#" "'>/="#)(i)
 }
 
-fn ws<'a, F: 'a, O, E: nom::error::ParseError<&'a str>>(
+fn ws<'a, F, O, E: nom::error::ParseError<&'a str>>(
     inner: F,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
 where
@@ -76,7 +76,7 @@ fn doctype(i: &str) -> IResult<&str, HTMLNode<&str>> {
     )(i)
 }
 
-fn start_tag<'a, F: 'a, E: 'a>(
+fn start_tag<'a, F, E>(
     inner: F,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, (&'a str, Vec<(&'a str, &'a str)>, bool), E>
 where

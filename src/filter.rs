@@ -1,5 +1,5 @@
 use crate::{
-    HTMLNode,
+    Node,
     Pattern,
 };
 
@@ -47,13 +47,14 @@ pub struct Attr<N, V> {
     pub value: V,
 }
 
-impl<S, N, V> Filter<HTMLNode<S>> for Attr<N, V>
+impl<T, N, V> Filter<T> for Attr<N, V>
 where
-    S: Ord,
-    N: Pattern<S>,
-    V: Pattern<S>,
+    T: Node,
+    T::Text: Ord,
+    N: Pattern<T::Text>,
+    V: Pattern<T::Text>,
 {
-    fn matches(&self, node: &HTMLNode<S>) -> bool {
+    fn matches(&self, node: &T) -> bool {
         if let Some(attrs) = node.attrs() {
             if let Some(name) = self.name.value() {
                 if let Some(value) = attrs.get(&name) {
@@ -81,11 +82,12 @@ pub struct Tag<P> {
     pub tag: P,
 }
 
-impl<S, P> Filter<HTMLNode<S>> for Tag<P>
+impl<N, P> Filter<N> for Tag<P>
 where
-    P: Pattern<S>,
+    N: Node,
+    P: Pattern<N::Text>,
 {
-    fn matches(&self, node: &HTMLNode<S>) -> bool {
+    fn matches(&self, node: &N) -> bool {
         if let Some(bypass) = self.tag.bypass() {
             bypass
         } else if let Some(name) = node.name() {

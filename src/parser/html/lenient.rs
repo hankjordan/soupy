@@ -1,8 +1,8 @@
 use std::convert::Infallible;
 
-use crate::{
-    node::HTMLNode,
-    parser::Parser,
+use crate::parser::{
+    html::HTMLNode,
+    Parser,
 };
 
 /// Lenient HTML parser.

@@ -8,12 +8,16 @@ readme = "README.md"
 repository = "https://github.com/hankjordan/soupy"
 
 [features]
-default = ["regex", "lenient"]
+default = ["regex", "html", "xml"]
 regex = ["dep:regex"]
-lenient = ["dep:scraper", "dep:ego-tree"]
+html = ["html-lenient", "html-strict"]
+html-lenient = ["dep:scraper", "dep:ego-tree"]
+html-strict = ["dep:nom"]
+xml = ["dep:xmltree"]
 
 [dependencies]
-nom = "7.1"
+nom = { version = "7.1", optional = true }
 regex = { version = "1.9", optional = true }
-scraper = { version = "0.18", optional = true }
+scraper = { version = "0.19", optional = true }
 ego-tree = { version = "0.6", optional = true }
+xmltree = { version = "0.10", optional = true }

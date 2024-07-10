@@ -13,7 +13,7 @@ pub mod query;
 mod soup;
 
 pub use crate::{
-    node::HTMLNode,
+    node::Node,
     pattern::Pattern,
     query::QueryExt,
     soup::Soup,

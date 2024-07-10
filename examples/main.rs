@@ -3,7 +3,7 @@ use soupy::*;
 const HELLO: &str = include_str!("hello.html");
 
 fn main() {
-    let soup = Soup::new(HELLO).expect("Failed to parse HTML");
+    let soup = Soup::html(HELLO);
 
     println!("soup {:?}", soup);
 

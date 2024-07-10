@@ -1,6 +1,10 @@
 mod html;
+#[cfg(feature = "xml")]
+mod xml;
 
 pub use html::*;
+#[cfg(feature = "xml")]
+pub use xml::*;
 
 /// Used to convert a string into a [`Vec`] of nodes.
 pub trait Parser<'a> {

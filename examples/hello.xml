@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <simple>Here's some text</simple>
+    <complex id="hello">
+        <nested>Nested text!</nested>
+    </complex>
+</root>
