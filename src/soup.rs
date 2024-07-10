@@ -1,54 +1,52 @@
 use std::marker::PhantomData;
 
 use crate::{
-    filter::{
-        And,
-        Attr,
-        Filter,
-        Tag,
-    },
-    parser::{
-        Parser,
-        StrictHTMLParser,
-    },
+    parser::Parser,
     query::{
-        Query,
+        QueryItem,
         QueryIter,
     },
-    Pattern,
-    QueryExt,
 };
 
 /// Parsed nodes
 #[derive(Clone, Debug)]
 pub struct Soup<'a, P: Parser<'a>> {
     pub(crate) nodes: Vec<P::Node>,
-    _marker: PhantomData<P>,
+    pub(crate) _marker: PhantomData<P>,
 }
 
-impl<'a> Soup<'a, StrictHTMLParser> {
+#[cfg(feature = "html-strict")]
+impl<'a> Soup<'a, crate::parser::StrictHTMLParser> {
     /// Attempts to create a new `Soup` instance from a string slice.
     ///
     /// # Errors
     /// If the text is invalid HTML.
-    pub fn new(text: &'a str) -> Result<Self, <StrictHTMLParser as Parser>::Error> {
-        Ok(Self {
-            nodes: StrictHTMLParser::parse(text)?,
-            _marker: PhantomData,
-        })
+    pub fn html_strict(
+        text: &'a str,
+    ) -> Result<Self, <crate::parser::StrictHTMLParser as Parser>::Error> {
+        Self::new(text)
     }
 }
 
-#[cfg(feature = "lenient")]
+#[cfg(feature = "html-lenient")]
 impl<'a> Soup<'a, crate::parser::LenientHTMLParser> {
     /// Creates a new `Soup` instance from a string slice.
     #[allow(clippy::missing_panics_doc)]
     #[must_use]
-    pub fn lenient(text: &'a str) -> Self {
-        Self {
-            nodes: crate::parser::LenientHTMLParser::parse(text).unwrap(),
-            _marker: PhantomData,
-        }
+    pub fn html(text: &'a str) -> Self {
+        Self::new(text).unwrap()
+    }
+}
+
+#[cfg(feature = "xml")]
+impl<'a> Soup<'a, crate::parser::XMLParser> {
+    /// Creates a new `Soup` instance from a string slice.
+    ///
+    /// # Errors
+    /// If the text is invalid XML.
+    #[allow(clippy::missing_panics_doc)]
+    pub fn xml(text: &'a str) -> Result<Self, <crate::parser::XMLParser as Parser>::Error> {
+        Self::new(text)
     }
 }
 
@@ -57,7 +55,7 @@ impl<'a, P: Parser<'a>> Soup<'a, P> {
     ///
     /// # Errors
     /// If the text has an invalid format.
-    pub fn with_parser(text: &'a str) -> Result<Soup<'a, P>, P::Error> {
+    pub fn new(text: &'a str) -> Result<Soup<'a, P>, P::Error> {
         Ok(Soup {
             nodes: P::parse(text)?,
             _marker: PhantomData,
@@ -65,44 +63,29 @@ impl<'a, P: Parser<'a>> Soup<'a, P> {
     }
 }
 
-impl<'a, P: Parser<'a>> QueryExt<'a, P, ()> for &'a Soup<'a, P> {
-    fn tag<T: Pattern<P::Text>>(self, tag: T) -> Query<'a, P, And<(), Tag<T>>>
-    where
-        Tag<T>: Filter<P::Node>,
-    {
-        Query {
-            filter: And((), Tag { tag }),
-            soup: self,
-        }
-    }
-
-    fn attr<N: Pattern<P::Text>, V: Pattern<P::Text>>(
-        self,
-        name: N,
-        value: V,
-    ) -> Query<'a, P, And<(), Attr<N, V>>>
-    where
-        Attr<N, V>: Filter<P::Node>,
-    {
-        Query {
-            filter: And((), Attr { name, value }),
-            soup: self,
-        }
+impl<'x, 'a, P> Soup<'a, P>
+where
+    P: Parser<'a>,
+    P::Node: 'x,
+{
+    /// Query the data.
+    #[must_use]
+    pub fn iter(
+        &'x self,
+    ) -> QueryIter<'x, 'a, std::slice::Iter<'x, P::Node>, P, ()> {
+        QueryIter::new((), self.nodes.iter())
     }
 }
 
-impl<'a, P: Parser<'a>> IntoIterator for &'a Soup<'a, P>
+impl<'x, 'a, P> IntoIterator for &'x Soup<'a, P>
 where
-    &'a P::Node: IntoIterator<Item = &'a P::Node>,
+    P: Parser<'a>,
+    P::Node: 'x,
 {
-    type Item = &'a P::Node;
-    type IntoIter = QueryIter<'a, std::iter::Flatten<std::slice::Iter<'a, P::Node>>, P, ()>;
+    type Item = QueryItem<'x, 'a, P>;
+    type IntoIter = QueryIter<'x, 'a, std::slice::Iter<'x, P::Node>, P, ()>;
 
     fn into_iter(self) -> Self::IntoIter {
-        QueryIter {
-            filter: (),
-            iter: self.nodes.iter().flatten(),
-            _marker: PhantomData,
-        }
+        self.iter()
     }
 }

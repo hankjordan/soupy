@@ -1,18 +1,17 @@
 use std::convert::Infallible;
 
-use crate::{
-    node::HTMLNode,
-    parser::Parser,
+use crate::parser::{
+    html::HTMLNode,
+    Parser,
 };
 
-/// Lenient HTML parser.
+/// Lenient HTML parser
 ///
 /// Attempts to work through invalid HTML.
 #[derive(Clone, Debug)]
 pub struct LenientHTMLParser;
 
 impl<'a> Parser<'a> for LenientHTMLParser {
-    type Text = scraper::StrTendril;
     type Node = HTMLNode<scraper::StrTendril>;
     type Error = Infallible;
 

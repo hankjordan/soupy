@@ -25,17 +25,16 @@ use nom::{
     Parser,
 };
 
-use crate::HTMLNode;
+use crate::parser::html::HTMLNode;
 
-/// Default HTML parser.
+/// Simple, strict HTML parser
 ///
 /// Errors on malformed HTML.
 #[derive(Clone, Debug)]
 pub struct StrictHTMLParser;
 
 impl<'a> crate::parser::Parser<'a> for StrictHTMLParser {
-    type Text = &'a str;
-    type Node = HTMLNode<Self::Text>;
+    type Node = HTMLNode<&'a str>;
     type Error = nom::Err<nom::error::Error<&'a str>>;
 
     fn parse(text: &'a str) -> Result<Vec<Self::Node>, Self::Error> {
@@ -50,7 +49,7 @@ where
     is_not(r#" "'>/="#)(i)
 }
 
-fn ws<'a, F: 'a, O, E: nom::error::ParseError<&'a str>>(
+fn ws<'a, F, O, E: nom::error::ParseError<&'a str>>(
     inner: F,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
 where
@@ -76,7 +75,7 @@ fn doctype(i: &str) -> IResult<&str, HTMLNode<&str>> {
     )(i)
 }
 
-fn start_tag<'a, F: 'a, E: 'a>(
+fn start_tag<'a, F, E>(
     inner: F,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, (&'a str, Vec<(&'a str, &'a str)>, bool), E>
 where

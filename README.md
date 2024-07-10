@@ -1,16 +1,14 @@
-# Devices
+# Soupy
 [![][img_version]][crates] [![][img_doc]][doc] [![][img_license]][license] [![][img_downloads]][crates]
 
 `soupy` is a library for parsing and querying like BeautifulSoup.
 
-## TODO
-
-- [ ] Default XML parser
-- [ ] Lenient HTML parser
-- [ ] Node editing
-
 ## Cargo Features
 
+- `html`: Support for HTML. Enabled by default.
+  - `html-lenient`: Error-tolerant HTML parser. Slow. Enabled by default.
+  - `html-strict`: Simple, fast HTML parser. Enabled by default.
+- `xml`: Support for XML. Enabled by default.
 - `regex`: Support for regex matching in queries. Enabled by default.
 
 ## License

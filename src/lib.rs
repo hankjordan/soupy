@@ -1,4 +1,5 @@
 #![warn(clippy::pedantic)]
+#![warn(missing_docs)]
 #![allow(clippy::module_name_repetitions)]
 #![doc = include_str!("../README.md")]
 
@@ -13,9 +14,12 @@ pub mod query;
 mod soup;
 
 pub use crate::{
-    node::HTMLNode,
+    node::Node,
     pattern::Pattern,
-    query::QueryExt,
+    query::{
+        QueryExt,
+        Queryable,
+    },
     soup::Soup,
 };
 

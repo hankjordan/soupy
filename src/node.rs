@@ -1,83 +1,94 @@
-use std::collections::BTreeMap;
+use std::{
+    collections::BTreeMap,
+    marker::PhantomData,
+};
 
-/// An HTML node
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum HTMLNode<S> {
-    /// A comment, like `<!-- ... -->`
-    Comment(S),
-    /// The doctype, like `<!DOCTYPE ...>`
-    Doctype(S),
-    /// A standard element, like `<p> ... </p>`
-    Element {
-        name: S,
-        attrs: BTreeMap<S, S>,
-        children: Vec<HTMLNode<S>>,
-    },
-    /// An element that contains code, like `<script> ... </script>`
-    RawElement {
-        name: S,
-        attrs: BTreeMap<S, S>,
-        content: S,
-    },
-    /// A void element that is unable to contain children, like `<input>`
-    Void { name: S, attrs: BTreeMap<S, S> },
-    /// Raw text
-    Text(S),
-}
+/// Basic queryable unit of the data structure
+pub trait Node: Sized {
+    /// Type of text values returned
+    type Text;
 
-impl<S> HTMLNode<S> {
-    /// Retrieves the name of the node
-    ///
-    /// Only returns [`Some`] for [`Node::Element`], [`Node::RawElement`], or [`Node::Void`].
-    #[must_use]
-    pub fn name(&self) -> Option<&S> {
-        match self {
-            Self::Element { name, .. }
-            | Self::RawElement { name, .. }
-            | Self::Void { name, .. } => Some(name),
-            _ => None,
-        }
-    }
+    /// Returns the name of the node
+    fn name(&self) -> Option<&Self::Text>;
 
     /// Returns the node's attributes as a [`BTreeMap`]
     #[must_use]
-    pub fn attrs(&self) -> Option<&BTreeMap<S, S>> {
-        match self {
-            Self::Element { attrs, .. }
-            | Self::RawElement { attrs, .. }
-            | Self::Void { attrs, .. } => Some(attrs),
-            _ => None,
-        }
-    }
+    fn attrs(&self) -> Option<&BTreeMap<Self::Text, Self::Text>>;
 
     /// Looks for an attribute named `attr` and returns its value
     ///
     /// # Example
     /// ```rust
     /// # use soupy::prelude::*;
-    /// let soup = Soup::new(r#"<div class="foo bar"></div>"#).unwrap();
+    /// let soup = Soup::html_strict(r#"<div class="foo bar"></div>"#).unwrap();
     /// let div = soup.tag("div").first().expect("Couldn't find div");
-    /// assert_eq!(div.get("class"), Some("foo bar"));
+    /// assert_eq!(div.get("class"), Some(&"foo bar"));
     /// ```
     #[must_use]
-    pub fn get<'a, Q>(&self, name: &'a Q) -> Option<&S>
+    fn get<'a, Q>(&self, name: &'a Q) -> Option<&Self::Text>
     where
-        S: Ord + From<&'a Q>,
+        Self::Text: Ord + From<&'a Q>,
         Q: ?Sized,
     {
         self.attrs().and_then(|a| a.get(&name.into()))
     }
+
+    /// Direct children of the node
+    fn children(&self) -> &[Self];
+
+    /// Depth-first iterator over children of the node, including the root
+    fn tree(&self) -> TreeIter<Self> {
+        TreeIter::new(self)
+    }
 }
 
-/// An [`Iterator`] over a [`Node`] and its children.
-pub struct HTMLNodeIter<'a, S> {
-    node: &'a HTMLNode<S>,
-    child: Option<Box<HTMLNodeIter<'a, S>>>,
+pub(crate) struct MapTreeIter<'a, I> {
+    iter: I,
+    _marker: PhantomData<&'a ()>,
+}
+
+impl<'a, I> MapTreeIter<'a, I> {
+    pub(crate) fn new(iter: I) -> Self {
+        Self {
+            iter,
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<'a, I, N> Iterator for MapTreeIter<'a, I>
+where
+    N: 'a,
+    I: Iterator<Item = &'a N>,
+{
+    type Item = TreeIter<'a, N>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next().map(|n| TreeIter::new(n))
+    }
+}
+
+pub struct TreeIter<'a, N> {
+    node: &'a N,
+    child: Option<Box<TreeIter<'a, N>>>,
     next: Option<usize>,
 }
 
-impl<'a, S> Iterator for HTMLNodeIter<'a, S> {
-    type Item = &'a HTMLNode<S>;
+impl<'a, N> TreeIter<'a, N> {
+    pub fn new(node: &'a N) -> Self {
+        Self {
+            node,
+            child: None,
+            next: None,
+        }
+    }
+}
+
+impl<'a, N> Iterator for TreeIter<'a, N>
+where
+    N: Node,
+{
+    type Item = &'a N;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
@@ -88,13 +99,11 @@ impl<'a, S> Iterator for HTMLNodeIter<'a, S> {
 
                 self.child = None;
             } else if let Some(next) = self.next {
-                if let HTMLNode::Element { children, .. } = self.node {
-                    if let Some(child) = children.get(next) {
-                        self.child = Some(Box::new(child.into_iter()));
-                        self.next = Some(next + 1);
-                    } else {
-                        return None;
-                    }
+                let children = self.node.children();
+
+                if let Some(child) = children.get(next) {
+                    self.child = Some(Box::new(Self::new(child)));
+                    self.next = Some(next + 1);
                 } else {
                     return None;
                 }
@@ -102,19 +111,6 @@ impl<'a, S> Iterator for HTMLNodeIter<'a, S> {
                 self.next = Some(0);
                 return Some(self.node);
             }
-        }
-    }
-}
-
-impl<'a, S> IntoIterator for &'a HTMLNode<S> {
-    type Item = &'a HTMLNode<S>;
-    type IntoIter = HTMLNodeIter<'a, S>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        HTMLNodeIter {
-            node: self,
-            child: None,
-            next: None,
         }
     }
 }
