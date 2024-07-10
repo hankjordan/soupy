@@ -27,17 +27,6 @@ pub enum HTMLNode<S> {
     Text(S),
 }
 
-impl<S> HTMLNode<S> {
-    /// Iterate over child nodes
-    pub fn iter(&self) -> HTMLNodeIter<S> {
-        HTMLNodeIter {
-            node: self,
-            child: None,
-            next: None,
-        }
-    }
-}
-
 impl<S> Node for HTMLNode<S> {
     type Text = S;
 
@@ -57,6 +46,25 @@ impl<S> Node for HTMLNode<S> {
             | Self::RawElement { attrs, .. }
             | Self::Void { attrs, .. } => Some(attrs),
             _ => None,
+        }
+    }
+
+    fn children(&self) -> &[Self] {
+        if let Self::Element { children, .. } = &self {
+            children.as_slice()
+        } else {
+            &[]
+        }
+    }
+}
+
+impl<S> HTMLNode<S> {
+    /// Iterate over child nodes
+    pub fn iter(&self) -> HTMLNodeIter<S> {
+        HTMLNodeIter {
+            node: self,
+            child: None,
+            next: None,
         }
     }
 }

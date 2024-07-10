@@ -1,10 +1,6 @@
 use std::collections::BTreeMap;
 
-pub trait NodeIterable {}
-
-impl<T> NodeIterable for T where for<'a> &'a T: IntoIterator<Item = &'a T> {}
-
-pub trait Node: NodeIterable {
+pub trait Node: Sized {
     type Text;
 
     /// Returns the name of the node
@@ -30,5 +26,55 @@ pub trait Node: NodeIterable {
         Q: ?Sized,
     {
         self.attrs().and_then(|a| a.get(&name.into()))
+    }
+
+    /// Direct children of the node
+    fn children(&self) -> &[Self];
+}
+
+pub struct TreeIter<'a, N> {
+    node: &'a N,
+    child: Option<Box<TreeIter<'a, N>>>,
+    next: Option<usize>,
+}
+
+impl<'a, N> TreeIter<'a, N> {
+    pub fn new(node: &'a N) -> Self {
+        Self {
+            node,
+            child: None,
+            next: None,
+        }
+    }
+}
+
+impl<'a, N> Iterator for TreeIter<'a, N>
+where
+    N: Node,
+{
+    type Item = &'a N;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            if let Some(child) = self.child.as_mut() {
+                if let Some(next) = child.next() {
+                    return Some(next);
+                }
+
+                self.child = None;
+            } else if let Some(next) = self.next {
+                let children = self.node.children();
+
+                if let Some(child) = children.get(next) {
+                    self.child = Some(Box::new(Self::new(child)));
+                    self.next = Some(next + 1);
+                } else {
+                    return None;
+                }
+            } else {
+                self.next = Some(0);
+                return Some(self.node);
+            }
+        }
     }
 }

@@ -100,6 +100,14 @@ impl Node for XMLNode {
             _ => None,
         }
     }
+
+    fn children(&self) -> &[Self] {
+        if let XMLNode::Element(e) = &self {
+            e.children.as_slice()
+        } else {
+            &[]
+        }
+    }
 }
 
 impl XMLNode {
