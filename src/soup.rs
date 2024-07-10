@@ -2,14 +2,14 @@ use std::marker::PhantomData;
 
 use crate::{
     parser::Parser,
-    query::QueryIter,
+    query::{QueryItem, QueryIter},
 };
 
 /// Parsed nodes
 #[derive(Clone, Debug)]
 pub struct Soup<'a, P: Parser<'a>> {
     pub(crate) nodes: Vec<P::Node>,
-    _marker: PhantomData<P>,
+    pub(crate) _marker: PhantomData<P>,
 }
 
 #[cfg(feature = "html-strict")]
@@ -80,7 +80,7 @@ impl<'a, P: Parser<'a>> IntoIterator for &'a Soup<'a, P>
 where
     &'a P::Node: IntoIterator<Item = &'a P::Node>,
 {
-    type Item = &'a P::Node;
+    type Item = QueryItem<'a, P>;
     type IntoIter = QueryIter<'a, std::iter::Flatten<std::slice::Iter<'a, P::Node>>, P, ()>;
 
     fn into_iter(self) -> Self::IntoIter {

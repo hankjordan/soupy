@@ -34,8 +34,7 @@ use crate::parser::html::HTMLNode;
 pub struct StrictHTMLParser;
 
 impl<'a> crate::parser::Parser<'a> for StrictHTMLParser {
-    type Text = &'a str;
-    type Node = HTMLNode<Self::Text>;
+    type Node = HTMLNode<&'a str>;
     type Error = nom::Err<nom::error::Error<&'a str>>;
 
     fn parse(text: &'a str) -> Result<Vec<Self::Node>, Self::Error> {

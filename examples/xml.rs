@@ -12,7 +12,9 @@ fn main() {
     }
 
     for node in soup.tag("complex") {
-        for node in node.tag("nested") {
+        let s = node.query();
+
+        for node in s.tag("nested") {
             println!("nested node {:?}", node);
         }
     }

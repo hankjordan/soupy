@@ -12,7 +12,6 @@ use crate::parser::{
 pub struct LenientHTMLParser;
 
 impl<'a> Parser<'a> for LenientHTMLParser {
-    type Text = scraper::StrTendril;
     type Node = HTMLNode<scraper::StrTendril>;
     type Error = Infallible;
 

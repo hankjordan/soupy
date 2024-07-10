@@ -11,7 +11,6 @@ use crate::{
 pub struct XMLParser;
 
 impl<'a> Parser<'a> for XMLParser {
-    type Text = String;
     type Node = XMLNode;
     type Error = xmltree::ParseError;
 
