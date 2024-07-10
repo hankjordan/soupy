@@ -106,3 +106,74 @@ impl<'a, S> IntoIterator for &'a HTMLNode<S> {
         self.iter()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::ops::Deref;
+
+    use super::*;
+    use crate::*;
+
+    const HELLO: &str = r#"
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="UTF-8"/>
+        <title>Hello!</title>
+    </head>
+
+    <body>
+        <h1>Hello World!</h1>
+        <p>This is a simple paragraph.</p>
+
+        <div class="parent">
+            <div class="child">
+                <div id="item">
+                    <p>Nested item</p>
+                    <a>Broken Link</a>
+                    <a href="https://example.com">Example Link</a>
+                </div>
+            </div>
+        </div>
+    </body>
+
+    <img class="self-closing"/>
+
+    <!-- Simple comment -->
+
+</html>"#;
+
+    #[test]
+    fn test_iterator() {
+        let soup = Soup::html_strict(HELLO).expect("Failed to parse HTML");
+
+        let body = soup
+            .tag("body")
+            .first()
+            .expect("Could not find body tag")
+            .deref()
+            .clone();
+
+        let mut nodes = body.iter();
+
+        // Node iterator must start with parent element, then recurse over children depth first.
+        // TODO: replace with special trait?
+
+        assert_eq!(nodes.next().unwrap().name(), Some(&"body"));
+
+        assert_eq!(nodes.next().unwrap(), &HTMLNode::Element {
+            name: "h1",
+            attrs: BTreeMap::default(),
+            children: vec![HTMLNode::Text("Hello World!")]
+        });
+
+        assert_eq!(nodes.next().unwrap(), &HTMLNode::Text("Hello World!"));
+
+        assert_eq!(nodes.next().unwrap(), &HTMLNode::Element {
+            name: "p",
+            attrs: BTreeMap::default(),
+            children: vec![HTMLNode::Text("This is a simple paragraph.")]
+        });
+    }
+}

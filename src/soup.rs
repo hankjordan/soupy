@@ -2,7 +2,10 @@ use std::marker::PhantomData;
 
 use crate::{
     parser::Parser,
-    query::{QueryItem, QueryIter},
+    query::{
+        QueryItem,
+        QueryIter,
+    },
 };
 
 /// Parsed nodes
@@ -60,14 +63,17 @@ impl<'a, P: Parser<'a>> Soup<'a, P> {
     }
 }
 
-impl<'a, P> Soup<'a, P>
+impl<'x, 'a, P> Soup<'a, P>
 where
     P: Parser<'a>,
-    &'a P::Node: IntoIterator<Item = &'a P::Node>,
+    P::Node: 'x,
+    &'x P::Node: IntoIterator<Item = &'x P::Node>,
 {
     /// Query the data.
     #[must_use]
-    pub fn iter(&'a self) -> QueryIter<std::iter::Flatten<std::slice::Iter<P::Node>>, P, ()> {
+    pub fn iter(
+        &'x self,
+    ) -> QueryIter<'x, 'a, std::iter::Flatten<std::slice::Iter<'x, P::Node>>, P, ()> {
         QueryIter {
             filter: (),
             iter: self.nodes.iter().flatten(),
@@ -76,12 +82,14 @@ where
     }
 }
 
-impl<'a, P: Parser<'a>> IntoIterator for &'a Soup<'a, P>
+impl<'x, 'a, P> IntoIterator for &'x Soup<'a, P>
 where
-    &'a P::Node: IntoIterator<Item = &'a P::Node>,
+    P: Parser<'a>,
+    P::Node: 'x,
+    &'x P::Node: IntoIterator<Item = &'x P::Node>,
 {
-    type Item = QueryItem<'a, P>;
-    type IntoIter = QueryIter<'a, std::iter::Flatten<std::slice::Iter<'a, P::Node>>, P, ()>;
+    type Item = QueryItem<'x, 'a, P>;
+    type IntoIter = QueryIter<'x, 'a, std::iter::Flatten<std::slice::Iter<'x, P::Node>>, P, ()>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()

@@ -12,10 +12,21 @@ fn main() {
     }
 
     for node in soup.tag("complex") {
-        let s = node.query();
+        println!("Complex {:?}", node);
+        println!("Complex query {:?}", node.query());
 
-        for node in s.tag("nested") {
-            println!("nested node {:?}", node);
+        let q = node.query();
+
+        for node in &q {
+            println!("nested {:?}", node);
+        }
+    }
+
+    for node in soup.tag("complex") {
+        println!("Complex 2 {:?}", node);
+
+        for node in node.query().tag("nested") {
+            println!("nested inline {:?}", node);
         }
     }
 }

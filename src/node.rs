@@ -19,9 +19,9 @@ pub trait Node: NodeIterable {
     /// # Example
     /// ```rust
     /// # use soupy::prelude::*;
-    /// let soup = Soup::new(r#"<div class="foo bar"></div>"#).unwrap();
+    /// let soup = Soup::html_strict(r#"<div class="foo bar"></div>"#).unwrap();
     /// let div = soup.tag("div").first().expect("Couldn't find div");
-    /// assert_eq!(div.get("class"), Some("foo bar"));
+    /// assert_eq!(div.get("class"), Some(&"foo bar"));
     /// ```
     #[must_use]
     fn get<'a, Q>(&self, name: &'a Q) -> Option<&Self::Text>

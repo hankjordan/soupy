@@ -9,15 +9,18 @@
 ///
 /// struct MyType(String);
 ///
-/// impl Pattern for MyType {
-///     fn matches(&self, haystack: &str) -> bool {
-///         self.0.matches(haystack)
+/// impl<'a, S> Pattern<S> for MyType 
+/// where
+///     S: AsRef<str> + From<&'a str>,
+/// {
+///     fn matches(&self, haystack: &S) -> bool {
+///         haystack.as_ref() == self.0
 ///     }
 /// }
 ///
-/// let soup = Soup::new(r#"<div id="foo"></div>"#).unwrap();
+/// let soup = Soup::html_strict(r#"<div id="foo"></div>"#).unwrap();
 /// let result = soup.tag(MyType("div".to_string())).first().expect("Couldn't find div with id foo");
-/// assert_eq!(result.get("id"), Some("foo"));
+/// assert_eq!(result.get("id"), Some(&"foo"));
 /// ```
 pub trait Pattern<S> {
     /// Matches the `Pattern` with the value `haystack`
