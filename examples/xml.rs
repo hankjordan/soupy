@@ -3,7 +3,7 @@ use soupy::*;
 const HELLO: &str = include_str!("hello.xml");
 
 fn main() {
-    let soup = Soup::xml(HELLO).expect("Failed to parse XML");
+    let soup = Soup::xml(HELLO.as_bytes()).expect("Failed to parse XML");
 
     println!("soup {:?}", soup);
 

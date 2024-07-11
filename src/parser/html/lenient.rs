@@ -1,4 +1,7 @@
-use std::convert::Infallible;
+use std::{
+    convert::Infallible,
+    marker::PhantomData,
+};
 
 use crate::parser::{
     html::HTMLNode,
@@ -9,14 +12,20 @@ use crate::parser::{
 ///
 /// Attempts to work through invalid HTML.
 #[derive(Clone, Debug)]
-pub struct LenientHTMLParser;
+pub struct LenientHTMLParser<S> {
+    _marker: PhantomData<S>,
+}
 
-impl<'a> Parser<'a> for LenientHTMLParser {
+impl<S> Parser for LenientHTMLParser<S>
+where
+    S: AsRef<str>,
+{
+    type Input = S;
     type Node = HTMLNode<scraper::StrTendril>;
     type Error = Infallible;
 
-    fn parse(text: &'a str) -> Result<Vec<Self::Node>, Self::Error> {
-        Ok(scraper::Html::parse_document(text)
+    fn parse(text: S) -> Result<Vec<Self::Node>, Self::Error> {
+        Ok(scraper::Html::parse_document(text.as_ref())
             .tree
             .root()
             .children()

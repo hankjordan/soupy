@@ -1,4 +1,8 @@
-use std::collections::BTreeMap;
+use std::{
+    collections::BTreeMap,
+    io::Read,
+    marker::PhantomData,
+};
 
 use xmltree::Namespace;
 
@@ -8,17 +12,23 @@ use crate::{
 };
 
 /// Default XML parser
-/// 
+///
 /// Errors on malformed XML.
 #[derive(Clone, Debug)]
-pub struct XMLParser;
+pub struct XMLParser<R> {
+    _marker: PhantomData<R>,
+}
 
-impl<'a> Parser<'a> for XMLParser {
+impl<R> Parser for XMLParser<R>
+where
+    R: Read,
+{
+    type Input = R;
     type Node = XMLNode;
     type Error = xmltree::ParseError;
 
-    fn parse(text: &'a str) -> Result<Vec<Self::Node>, Self::Error> {
-        Ok(xmltree::Element::parse_all(text.as_bytes())?
+    fn parse(reader: R) -> Result<Vec<Self::Node>, Self::Error> {
+        Ok(xmltree::Element::parse_all(reader)?
             .into_iter()
             .map(Into::into)
             .collect())
@@ -157,7 +167,7 @@ mod tests {
 
     #[test]
     fn test_tree_iter() {
-        let soup = Soup::xml(HELLO).expect("Failed to parse XML");
+        let soup = Soup::xml(HELLO.as_bytes()).expect("Failed to parse XML");
 
         let complex = soup
             .tag("complex")
@@ -195,7 +205,7 @@ mod tests {
 
     #[test]
     fn test_direct_iter() {
-        let soup = Soup::xml(HELLO).expect("Failed to parse XML");
+        let soup = Soup::xml(HELLO.as_bytes()).expect("Failed to parse XML");
 
         let complex = soup
             .tag("complex")

@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use nom::{
     branch::alt,
     bytes::complete::{
@@ -31,9 +33,12 @@ use crate::parser::html::HTMLNode;
 ///
 /// Errors on malformed HTML.
 #[derive(Clone, Debug)]
-pub struct StrictHTMLParser;
+pub struct StrictHTMLParser<'a> {
+    _marker: PhantomData<&'a ()>,
+}
 
-impl<'a> crate::parser::Parser<'a> for StrictHTMLParser {
+impl<'a> crate::parser::Parser for StrictHTMLParser<'a> {
+    type Input = &'a str;
     type Node = HTMLNode<&'a str>;
     type Error = nom::Err<nom::error::Error<&'a str>>;
 
