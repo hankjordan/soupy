@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use crate::{
     filter::{
         And,
@@ -8,20 +6,23 @@ use crate::{
         Tag,
     },
     node::MapTreeIter,
-    parser::Parser,
     Node,
     Pattern,
     Soup,
 };
 
 /// A query for elements in [`Soup`](`crate::Soup`) matching the [`Filter`](`crate::filter::Filter`) `F`
-pub struct Query<'x, P: Parser, F: Filter<P::Node>> {
+pub struct Query<'x, N, F> {
+    soup: &'x Soup<N>,
     filter: F,
-    soup: &'x Soup<P>,
 }
 
 /// Allows you to query for sub-elements matching the given [`Filter`](`crate::filter::Filter`)
-pub trait QueryExt<'x, P: Parser, F: Filter<P::Node>>: Sized {
+pub trait QueryExt<'x, N, F>: Sized
+where
+    N: Node,
+    F: Filter<N>,
+{
     /// Specifies a tag for which to search
     ///
     /// # Example
@@ -31,10 +32,10 @@ pub trait QueryExt<'x, P: Parser, F: Filter<P::Node>>: Sized {
     /// let result = soup.tag("b").first().expect("Couldn't find tag 'b'");
     /// assert_eq!(result.get("id"), Some(&"bold-tag"));
     /// ```
-    fn tag<T>(self, tag: T) -> Query<'x, P, And<F, Tag<T>>>
+    fn tag<T>(self, tag: T) -> Query<'x, N, And<F, Tag<T>>>
     where
-        T: Pattern<<P::Node as Node>::Text>,
-        Tag<T>: Filter<P::Node>;
+        T: Pattern<N::Text>,
+        Tag<T>: Filter<N>;
 
     /// Specifies an attribute name/value pair for which to search
     ///
@@ -44,11 +45,11 @@ pub trait QueryExt<'x, P: Parser, F: Filter<P::Node>>: Sized {
     /// let soup = Soup::html_strict(r#"<div>Test</div><section><b id="bold-tag">SOME BOLD TEXT</b></section>"#).unwrap();
     /// let result = soup.attr("id", "bold-tag").first().expect("Couldn't find tag with id 'bold-tag'");
     /// assert_eq!(result.name(), Some(&"b"));
-    fn attr<N, V>(self, name: N, value: V) -> Query<'x, P, And<F, Attr<N, V>>>
+    fn attr<Q, V>(self, name: Q, value: V) -> Query<'x, N, And<F, Attr<Q, V>>>
     where
-        N: Pattern<<P::Node as Node>::Text>,
-        V: Pattern<<P::Node as Node>::Text>,
-        Attr<N, V>: Filter<P::Node>;
+        Q: Pattern<N::Text>,
+        V: Pattern<N::Text>,
+        Attr<Q, V>: Filter<N>;
 
     /// Searches for a tag that has an attribute with the specified name
     ///
@@ -59,10 +60,10 @@ pub trait QueryExt<'x, P: Parser, F: Filter<P::Node>>: Sized {
     /// let result = soup.attr_name("id").first().expect("Couldn't find element with an 'id'");
     /// assert_eq!(result.name(), Some(&"b"));
     /// ```
-    fn attr_name<N>(self, name: N) -> Query<'x, P, And<F, Attr<N, bool>>>
+    fn attr_name<Q>(self, name: Q) -> Query<'x, N, And<F, Attr<Q, bool>>>
     where
-        N: Pattern<<P::Node as Node>::Text>,
-        Attr<N, bool>: Filter<P::Node>,
+        Q: Pattern<N::Text>,
+        Attr<Q, bool>: Filter<N>,
     {
         self.attr(name, true)
     }
@@ -76,10 +77,10 @@ pub trait QueryExt<'x, P: Parser, F: Filter<P::Node>>: Sized {
     /// let result = soup.attr_value("bold-tag").first().expect("Couldn't find a tag with attribute value 'bold-tag'");
     /// assert_eq!(result.name(), Some(&"b"));
     /// ```
-    fn attr_value<V>(self, value: V) -> Query<'x, P, And<F, Attr<bool, V>>>
+    fn attr_value<V>(self, value: V) -> Query<'x, N, And<F, Attr<bool, V>>>
     where
-        V: Pattern<<P::Node as Node>::Text>,
-        Attr<bool, V>: Filter<P::Node>,
+        V: Pattern<N::Text>,
+        Attr<bool, V>: Filter<N>,
     {
         self.attr(true, value)
     }
@@ -94,11 +95,11 @@ pub trait QueryExt<'x, P: Parser, F: Filter<P::Node>>: Sized {
     /// let soup = Soup::html_strict(r#"<div>Test</div><section class="content"><b id="bold-tag">SOME BOLD TEXT</b></section>"#).unwrap();
     /// let result = soup.class("content").first().expect("Couldn't find tag with class 'content'");
     /// assert_eq!(result.name(), Some(&"section"));
-    fn class<C>(self, class: C) -> Query<'x, P, And<F, Attr<&'static str, C>>>
+    fn class<C>(self, class: C) -> Query<'x, N, And<F, Attr<&'static str, C>>>
     where
-        C: Pattern<<P::Node as Node>::Text>,
-        <P::Node as Node>::Text: AsRef<str> + From<&'static str>,
-        Attr<&'static str, C>: Filter<P::Node>,
+        C: Pattern<N::Text>,
+        N::Text: AsRef<str> + From<&'static str>,
+        Attr<&'static str, C>: Filter<N>,
     {
         self.attr("class", class)
     }
@@ -141,72 +142,71 @@ pub trait QueryExt<'x, P: Parser, F: Filter<P::Node>>: Sized {
     }
 }
 
-impl<'x, P, F> QueryExt<'x, P, F> for Query<'x, P, F>
+impl<'x, N, F> QueryExt<'x, N, F> for Query<'x, N, F>
 where
-    P: Parser,
-    F: Filter<P::Node>,
+    N: Node,
+    F: Filter<N>,
 {
-    fn tag<T>(self, tag: T) -> Query<'x, P, And<F, Tag<T>>>
+    fn tag<T>(self, tag: T) -> Query<'x, N, And<F, Tag<T>>>
     where
-        T: Pattern<<P::Node as Node>::Text>,
-        Tag<T>: Filter<P::Node>,
+        T: Pattern<N::Text>,
+        Tag<T>: Filter<N>,
     {
         Query {
-            filter: And(self.filter, Tag { tag }),
             soup: self.soup,
+            filter: And(self.filter, Tag { tag }),
         }
     }
 
-    fn attr<N, V>(self, name: N, value: V) -> Query<'x, P, And<F, Attr<N, V>>>
+    fn attr<Q, V>(self, name: Q, value: V) -> Query<'x, N, And<F, Attr<Q, V>>>
     where
-        N: Pattern<<P::Node as Node>::Text>,
-        V: Pattern<<P::Node as Node>::Text>,
-        Attr<N, V>: Filter<P::Node>,
+        Q: Pattern<N::Text>,
+        V: Pattern<N::Text>,
+        Attr<Q, V>: Filter<N>,
     {
         Query {
-            filter: And(self.filter, Attr { name, value }),
             soup: self.soup,
+            filter: And(self.filter, Attr { name, value }),
         }
     }
 }
 
-impl<'x, P> QueryExt<'x, P, ()> for &'x Soup<P> 
-where P: Parser {
-    fn tag<T>(self, tag: T) -> Query<'x, P, And<(), Tag<T>>>
+impl<'x, N> QueryExt<'x, N, ()> for &'x Soup<N>
+where
+    N: Node,
+{
+    fn tag<T>(self, tag: T) -> Query<'x, N, And<(), Tag<T>>>
     where
-        T: Pattern<<P::Node as Node>::Text>,
-        Tag<T>: Filter<P::Node>,
+        T: Pattern<N::Text>,
+        Tag<T>: Filter<N>,
     {
         Query {
-            filter: And((), Tag { tag }),
             soup: self,
+            filter: And((), Tag { tag }),
         }
     }
 
-    fn attr<N, V>(self, name: N, value: V) -> Query<'x, P, And<(), Attr<N, V>>>
+    fn attr<Q, V>(self, name: Q, value: V) -> Query<'x, N, And<(), Attr<Q, V>>>
     where
-        N: Pattern<<P::Node as Node>::Text>,
-        V: Pattern<<P::Node as Node>::Text>,
-        Attr<N, V>: Filter<P::Node>,
+        Q: Pattern<N::Text>,
+        V: Pattern<N::Text>,
+        Attr<Q, V>: Filter<N>,
     {
         Query {
-            filter: And((), Attr { name, value }),
             soup: self,
+            filter: And((), Attr { name, value }),
         }
     }
 }
 
 /// Item returned by a [`Query`]
 #[derive(Debug, Copy, Clone)]
-pub struct QueryItem<'x, P: Parser> {
-    item: &'x P::Node,
+pub struct QueryItem<'x, N> {
+    item: &'x N,
 }
 
-impl<'x, P> std::ops::Deref for QueryItem<'x, P>
-where
-    P: Parser,
-{
-    type Target = P::Node;
+impl<'x, N> std::ops::Deref for QueryItem<'x, N> {
+    type Target = N;
 
     fn deref(&self) -> &Self::Target {
         self.item
@@ -214,58 +214,48 @@ where
 }
 
 /// Type that can be turned into [`Soup`] and queried
-pub trait Queryable<P>
-where
-    P: Parser,
-{
+pub trait Queryable<N> {
     /// Convert the type into one that can be queried
-    fn query(self) -> Soup<P>;
+    fn query(self) -> Soup<N>;
 }
 
-impl<'x, P> Queryable<P> for &'x QueryItem<'x, P>
+impl<'x, N> Queryable<N> for &'x QueryItem<'x, N>
 where
-    P: Parser,
-    P::Node: Clone,
+    N: Node + Clone,
 {
-    fn query(self) -> Soup<P> {
+    fn query(self) -> Soup<N> {
         Soup {
             nodes: self.item.children().to_vec(),
-            _marker: PhantomData,
         }
     }
 }
 
 /// An [`Iterator`] over matching elements
-pub struct QueryIter<'x, I: Iterator<Item = &'x P::Node>, P: Parser + 'x, F: Filter<P::Node>>
-{
-    filter: F,
+pub struct QueryIter<'x, I: Iterator<Item = &'x N>, N: Node + 'x, F> {
     iter: std::iter::Flatten<MapTreeIter<'x, I>>,
-    _marker: PhantomData<(&'x (), P)>,
+    filter: F,
 }
 
-impl<'x, I, P, F> QueryIter<'x, I, P, F>
+impl<'x, I, N, F> QueryIter<'x, I, N, F>
 where
-    I: Iterator<Item = &'x P::Node>,
-    P: Parser,
-    F: Filter<P::Node>,
+    I: Iterator<Item = &'x N>,
+    N: Node,
 {
     pub(crate) fn new(filter: F, iter: I) -> Self {
         Self {
-            filter,
             iter: MapTreeIter::new(iter).flatten(),
-            _marker: PhantomData,
+            filter,
         }
     }
 }
 
-impl<'x, I, P, F> Iterator for QueryIter<'x, I, P, F>
+impl<'x, I, N, F> Iterator for QueryIter<'x, I, N, F>
 where
-    I: Iterator<Item = &'x P::Node>,
-    P: Parser,
-    P::Node: 'x,
-    F: Filter<P::Node>,
+    I: Iterator<Item = &'x N>,
+    N: Node,
+    F: Filter<N>,
 {
-    type Item = QueryItem<'x, P>;
+    type Item = QueryItem<'x, N>;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
@@ -277,13 +267,13 @@ where
     }
 }
 
-impl<'x, P, F> IntoIterator for Query<'x, P, F>
+impl<'x, N, F> IntoIterator for Query<'x, N, F>
 where
-    P: Parser,
-    F: Filter<P::Node>,
+    N: Node,
+    F: Filter<N>,
 {
-    type Item = QueryItem<'x, P>;
-    type IntoIter = QueryIter<'x, std::slice::Iter<'x, P::Node>, P, F>;
+    type Item = QueryItem<'x, N>;
+    type IntoIter = QueryIter<'x, std::slice::Iter<'x, N>, N, F>;
 
     fn into_iter(self) -> Self::IntoIter {
         QueryIter::new(self.filter, self.soup.nodes.iter())
