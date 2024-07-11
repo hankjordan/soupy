@@ -11,6 +11,9 @@ pub trait Node: Sized {
     /// Returns the name of the node
     fn name(&self) -> Option<&Self::Text>;
 
+    /// Returns the direct text content of the node, if any
+    fn text(&self) -> Option<&Self::Text>;
+
     /// Returns the node's attributes as a [`BTreeMap`]
     #[must_use]
     fn attrs(&self) -> Option<&BTreeMap<Self::Text, Self::Text>>;
@@ -39,6 +42,18 @@ pub trait Node: Sized {
     /// Depth-first iterator over children of the node, including the root
     fn tree(&self) -> TreeIter<Self> {
         TreeIter::new(self)
+    }
+
+    /// Returns all text content contained within the node's tree
+    fn all_text(&self) -> String
+    where
+        Self::Text: std::fmt::Display,
+    {
+        self.tree()
+            .filter_map(|n| n.text())
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 }
 

@@ -41,12 +41,18 @@ pub enum HTMLNode<S> {
 impl<S> Node for HTMLNode<S> {
     type Text = S;
 
-    #[must_use]
     fn name(&self) -> Option<&S> {
         match self {
             Self::Element { name, .. }
             | Self::RawElement { name, .. }
             | Self::Void { name, .. } => Some(name),
+            _ => None,
+        }
+    }
+
+    fn text(&self) -> Option<&S> {
+        match self {
+            Self::Text(t) => Some(t),
             _ => None,
         }
     }

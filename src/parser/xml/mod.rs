@@ -105,14 +105,21 @@ impl Node for XMLNode {
     type Text = String;
 
     fn name(&self) -> Option<&String> {
-        match &self {
+        match self {
             XMLNode::Element(e) => Some(&e.name),
             _ => None,
         }
     }
 
+    fn text(&self) -> Option<&String> {
+        match self {
+            XMLNode::Text(t) => Some(t),
+            _ => None,
+        }
+    }
+
     fn attrs(&self) -> Option<&BTreeMap<String, String>> {
-        match &self {
+        match self {
             XMLNode::Element(e) => Some(&e.attributes),
             _ => None,
         }
@@ -164,6 +171,31 @@ mod tests {
         </tree>
     </complex>
 </root>"#;
+
+    #[test]
+    fn test_text() {
+        let soup = Soup::xml(HELLO.as_bytes()).expect("Failed to parse XML");
+
+        let example = soup
+            .tag("example")
+            .first()
+            .expect("Could not find 'example' tag");
+
+        // TODO: Fix borrow lifetime issue here
+        let child = example
+            .children()
+            .first()
+            .expect("Could not find 'example' child node");
+
+        assert_eq!(child.text(), Some(&"More text".into()));
+
+        let root = soup.tag("root").first().expect("Could not find 'root' tag");
+
+        assert_eq!(
+            root.all_text(),
+            "Here's some text\nNested text!\nMore text\nTree text"
+        );
+    }
 
     #[test]
     fn test_tree_iter() {
