@@ -16,10 +16,7 @@ mod soup;
 pub use crate::{
     node::Node,
     pattern::Pattern,
-    query::{
-        QueryExt,
-        Queryable,
-    },
+    query::Queryable,
     soup::Soup,
 };
 

@@ -54,26 +54,26 @@ pub trait Node: Sized {
     }
 }
 
-pub enum NodeIter<'a, N> {
+pub enum NodeIter<'x, N> {
     Direct {
-        iter: std::slice::Iter<'a, N>,
+        iter: std::slice::Iter<'x, N>,
     },
     Tree {
-        node: &'a N,
-        child: Option<Box<NodeIter<'a, N>>>,
+        node: &'x N,
+        child: Option<Box<NodeIter<'x, N>>>,
         next: Option<usize>,
     },
 }
 
-impl<'a, N> NodeIter<'a, N>
+impl<'x, N> NodeIter<'x, N>
 where
     N: Node,
 {
-    pub(crate) fn direct(iter: std::slice::Iter<'a, N>) -> Self {
+    pub(crate) fn direct(iter: std::slice::Iter<'x, N>) -> Self {
         Self::Direct { iter }
     }
 
-    pub(crate) fn tree(node: &'a N) -> Self {
+    pub(crate) fn tree(node: &'x N) -> Self {
         Self::Tree {
             node,
             child: None,
@@ -82,11 +82,11 @@ where
     }
 }
 
-impl<'a, N> Iterator for NodeIter<'a, N>
+impl<'x, N> Iterator for NodeIter<'x, N>
 where
     N: Node,
 {
-    type Item = &'a N;
+    type Item = &'x N;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {

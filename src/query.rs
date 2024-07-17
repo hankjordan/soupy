@@ -19,13 +19,16 @@ pub struct Query<'x, N, F> {
 }
 
 /// Allows you to query for sub-elements matching the given [`Filter`](`crate::filter::Filter`)
-pub trait QueryExt<'x, N, F>: Sized
-where
-    N: Node,
-    F: Filter<N>,
-{
+#[allow(clippy::type_complexity)]
+pub trait Queryable<'x>: Sized {
+    /// Query node type
+    type Node: Node;
+
+    /// Already applied filter
+    type Filter: Filter<Self::Node>;
+
     /// Forces the query to only match direct children of the root node
-    fn strict(self) -> Query<'x, N, F>;
+    fn strict(self) -> Query<'x, Self::Node, Self::Filter>;
 
     /// Specifies a tag for which to search
     ///
@@ -36,10 +39,10 @@ where
     /// let result = soup.tag("b").first().expect("Couldn't find tag 'b'");
     /// assert_eq!(result.get("id"), Some(&"bold-tag"));
     /// ```
-    fn tag<T>(self, tag: T) -> Query<'x, N, And<F, Tag<T>>>
+    fn tag<T>(self, tag: T) -> Query<'x, Self::Node, And<Self::Filter, Tag<T>>>
     where
-        T: Pattern<N::Text>,
-        Tag<T>: Filter<N>;
+        T: Pattern<<Self::Node as Node>::Text>,
+        Tag<T>: Filter<Self::Node>;
 
     /// Specifies an attribute name/value pair for which to search
     ///
@@ -49,11 +52,11 @@ where
     /// let soup = Soup::html_strict(r#"<div>Test</div><section><b id="bold-tag">SOME BOLD TEXT</b></section>"#).unwrap();
     /// let result = soup.attr("id", "bold-tag").first().expect("Couldn't find tag with id 'bold-tag'");
     /// assert_eq!(result.name(), Some(&"b"));
-    fn attr<Q, V>(self, name: Q, value: V) -> Query<'x, N, And<F, Attr<Q, V>>>
+    fn attr<Q, V>(self, name: Q, value: V) -> Query<'x, Self::Node, And<Self::Filter, Attr<Q, V>>>
     where
-        Q: Pattern<N::Text>,
-        V: Pattern<N::Text>,
-        Attr<Q, V>: Filter<N>;
+        Q: Pattern<<Self::Node as Node>::Text>,
+        V: Pattern<<Self::Node as Node>::Text>,
+        Attr<Q, V>: Filter<Self::Node>;
 
     /// Searches for a tag that has an attribute with the specified name
     ///
@@ -64,10 +67,10 @@ where
     /// let result = soup.attr_name("id").first().expect("Couldn't find element with an 'id'");
     /// assert_eq!(result.name(), Some(&"b"));
     /// ```
-    fn attr_name<Q>(self, name: Q) -> Query<'x, N, And<F, Attr<Q, bool>>>
+    fn attr_name<Q>(self, name: Q) -> Query<'x, Self::Node, And<Self::Filter, Attr<Q, bool>>>
     where
-        Q: Pattern<N::Text>,
-        Attr<Q, bool>: Filter<N>,
+        Q: Pattern<<Self::Node as Node>::Text>,
+        Attr<Q, bool>: Filter<Self::Node>,
     {
         self.attr(name, true)
     }
@@ -81,10 +84,10 @@ where
     /// let result = soup.attr_value("bold-tag").first().expect("Couldn't find a tag with attribute value 'bold-tag'");
     /// assert_eq!(result.name(), Some(&"b"));
     /// ```
-    fn attr_value<V>(self, value: V) -> Query<'x, N, And<F, Attr<bool, V>>>
+    fn attr_value<V>(self, value: V) -> Query<'x, Self::Node, And<Self::Filter, Attr<bool, V>>>
     where
-        V: Pattern<N::Text>,
-        Attr<bool, V>: Filter<N>,
+        V: Pattern<<Self::Node as Node>::Text>,
+        Attr<bool, V>: Filter<Self::Node>,
     {
         self.attr(true, value)
     }
@@ -99,11 +102,11 @@ where
     /// let soup = Soup::html_strict(r#"<div>Test</div><section class="content"><b id="bold-tag">SOME BOLD TEXT</b></section>"#).unwrap();
     /// let result = soup.class("content").first().expect("Couldn't find tag with class 'content'");
     /// assert_eq!(result.name(), Some(&"section"));
-    fn class<C>(self, class: C) -> Query<'x, N, And<F, Attr<&'static str, C>>>
+    fn class<C>(self, class: C) -> Query<'x, Self::Node, And<Self::Filter, Attr<&'static str, C>>>
     where
-        C: Pattern<N::Text>,
-        N::Text: AsRef<str> + From<&'static str>,
-        Attr<&'static str, C>: Filter<N>,
+        C: Pattern<<Self::Node as Node>::Text>,
+        <Self::Node as Node>::Text: AsRef<str> + From<&'static str>,
+        Attr<&'static str, C>: Filter<Self::Node>,
     {
         self.attr("class", class)
     }
@@ -146,11 +149,14 @@ where
     }
 }
 
-impl<'x, N, F> QueryExt<'x, N, F> for Query<'x, N, F>
+impl<'x, N, F> Queryable<'x> for Query<'x, N, F>
 where
     N: Node,
     F: Filter<N>,
 {
+    type Node = N;
+    type Filter = F;
+
     fn strict(self) -> Query<'x, N, F> {
         Query {
             soup: self.soup,
@@ -185,10 +191,13 @@ where
     }
 }
 
-impl<'x, N> QueryExt<'x, N, ()> for &'x Soup<N>
+impl<'x, N> Queryable<'x> for &'x Soup<N>
 where
     N: Node,
 {
+    type Node = N;
+    type Filter = ();
+
     fn strict(self) -> Query<'x, N, ()> {
         Query {
             soup: self,
@@ -229,28 +238,24 @@ pub struct QueryItem<'x, N> {
     item: &'x N,
 }
 
+impl<'x, N> QueryItem<'x, N>
+where
+    N: Node + Clone,
+{
+    /// Convert the item into one that can be queried
+    #[must_use]
+    pub fn query(&self) -> Soup<N> {
+        Soup {
+            nodes: self.item.children().to_vec(),
+        }
+    }
+}
+
 impl<'x, N> std::ops::Deref for QueryItem<'x, N> {
     type Target = N;
 
     fn deref(&self) -> &Self::Target {
         self.item
-    }
-}
-
-/// Type that can be turned into [`Soup`] and queried
-pub trait Queryable<N> {
-    /// Convert the type into one that can be queried
-    fn query(self) -> Soup<N>;
-}
-
-impl<'x, N> Queryable<N> for &'x QueryItem<'x, N>
-where
-    N: Node + Clone,
-{
-    fn query(self) -> Soup<N> {
-        Soup {
-            nodes: self.item.children().to_vec(),
-        }
     }
 }
 

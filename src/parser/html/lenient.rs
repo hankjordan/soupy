@@ -63,3 +63,80 @@ impl<'a> TryFrom<ego_tree::NodeRef<'a, scraper::Node>> for HTMLNode<scraper::Str
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::*;
+
+    const HELLO: &str = r#"
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="UTF-8"/>
+        <title>Hello!</title>
+    </head>
+
+    <body>
+        <h1>Hello World!</h1>
+        <h2>Sub-heading</h2>
+        <p>This is a simple paragraph.</p>
+
+        <div class="parent">
+            <div class="child">
+                <div id="item">
+                    <p>Nested item</p>
+                    <a>Broken Link</a>
+                    <a href="https://example.com">Example Link</a>
+                </div>
+            </div>
+        </div>
+
+        <h3>Footer heading</h3>
+
+        <a href="https://other.com">Other Link</a>
+    </body>
+
+    <img class="self-closing"/>
+
+    <!-- Simple comment -->
+
+</html>"#;
+
+    #[test]
+    fn test_lenient_patterns() {
+        let soup = Soup::html(HELLO);
+
+        assert_eq!(
+            soup.tag("img")
+                .first()
+                .and_then(|t| t.get("class").cloned()),
+            Some("self-closing".into())
+        );
+
+        assert_eq!(
+            soup.tag("img".to_string())
+                .first()
+                .and_then(|t| t.get("class").cloned()),
+            Some("self-closing".into())
+        );
+
+        let regex = regex::Regex::new("^h[0-9]").expect("Failed to compile regex");
+
+        let mut headings = soup.tag(regex).all();
+
+        assert_eq!(
+            headings.next().and_then(|h| h.name().cloned()),
+            Some("h1".into())
+        );
+        assert_eq!(
+            headings.next().and_then(|h| h.name().cloned()),
+            Some("h2".into())
+        );
+        assert_eq!(
+            headings.next().and_then(|h| h.name().cloned()),
+            Some("h3".into())
+        );
+        assert_eq!(headings.next().and_then(|h| h.name().cloned()), None);
+    }
+}

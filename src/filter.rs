@@ -92,9 +92,7 @@ where
     P: Pattern<N::Text>,
 {
     fn matches(&self, node: &N) -> bool {
-        if let Some(bypass) = self.tag.bypass() {
-            bypass
-        } else if let Some(name) = node.name() {
+        if let Some(name) = node.name() {
             self.tag.matches(name)
         } else {
             false
