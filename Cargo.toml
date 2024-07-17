@@ -1,9 +1,9 @@
 [package]
 name = "soupy"
-version = "0.8.1"
+version = "0.8.2"
 edition = "2021"
 description = "A library for querying tree-based formats, similar to BeautifulSoup."
-keywords = ["beautifulsoup", "bs4", "soup", "html", "xml", "query", "tree"]
+keywords = ["beautifulsoup", "bs4", "soup", "html", "xml"]
 categories = ["parsing", "web-programming", "text-processing"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
