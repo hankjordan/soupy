@@ -12,6 +12,7 @@ use crate::{
 };
 
 /// A query for elements in [`Soup`](`crate::Soup`) matching the [`Filter`](`crate::filter::Filter`) `F`
+#[derive(Copy, Clone, Debug)]
 pub struct Query<'x, N, F> {
     soup: &'x Soup<N>,
     recursive: bool,
