@@ -12,11 +12,26 @@ use crate::{
 };
 
 /// A query for elements in [`Soup`](`crate::Soup`) matching the [`Filter`](`crate::filter::Filter`) `F`
-#[derive(Copy, Clone, Debug)]
+#[derive(Debug)]
 pub struct Query<'x, N, F> {
     soup: &'x Soup<N>,
     recursive: bool,
     filter: F,
+}
+
+impl<'x, N, F> Copy for Query<'x, N, F> where F: Copy {}
+
+impl<'x, N, F> Clone for Query<'x, N, F>
+where
+    F: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            soup: self.soup,
+            recursive: self.recursive,
+            filter: self.filter.clone(),
+        }
+    }
 }
 
 /// Allows you to query for sub-elements matching the given [`Filter`](`crate::filter::Filter`)
@@ -337,5 +352,26 @@ where
 
     fn into_iter(self) -> Self::IntoIter {
         QueryIter::new(&self.soup.nodes, self.recursive, self.filter)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::*;
+
+    #[test]
+    fn test_query_copy() {
+        let soup = Soup::html_strict("<b><a>one</a></b><a>two</a>").expect("Failed to parse HTML");
+
+        let q = soup.strict();
+
+        let q1 = q;
+        let q2 = q;
+
+        assert_eq!(
+            q1.tag("a").first().map(|t| (*t).clone()),
+            q2.tag("a").first().map(|t| (*t).clone())
+        );
     }
 }
