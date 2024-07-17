@@ -170,6 +170,12 @@ mod tests {
             </tree>
         </tree>
     </complex>
+
+    <b>
+        <a>Inner text</a>
+    </b>
+
+    <a>Outer text</a>
 </root>"#;
 
     #[test]
@@ -193,7 +199,7 @@ mod tests {
 
         assert_eq!(
             root.all_text(),
-            "Here's some text\nNested text!\nMore text\nTree text"
+            "Here's some text\nNested text!\nMore text\nTree text\nInner text\nOuter text"
         );
     }
 
@@ -208,7 +214,7 @@ mod tests {
             .deref()
             .clone();
 
-        let mut nodes = complex.tree();
+        let mut nodes = complex.descendants();
 
         assert_eq!(nodes.next().unwrap().name(), Some(&"complex".into()));
 
@@ -264,6 +270,29 @@ mod tests {
                 children: vec![XMLNode::Text("More text".into())],
                 ..Default::default()
             })
+        );
+    }
+
+    #[test]
+    fn test_iter_order() {
+        let soup = Soup::xml(HELLO.as_bytes()).expect("Failed to parse XML");
+
+        let soup = soup
+            .tag("root")
+            .first()
+            .expect("Failed to find 'root' tag")
+            .query();
+
+        // By default, the data is searched recursively, depth-first.
+        assert_eq!(
+            soup.tag("a").first().map(|t| t.all_text()),
+            Some("Inner text".into())
+        );
+
+        // Strict queries only match direct children, no recursion.
+        assert_eq!(
+            soup.strict().tag("a").first().map(|t| t.all_text()),
+            Some("Outer text".into())
         );
     }
 }

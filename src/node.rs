@@ -1,7 +1,4 @@
-use std::{
-    collections::BTreeMap,
-    marker::PhantomData,
-};
+use std::collections::BTreeMap;
 
 /// Basic queryable unit of the data structure
 pub trait Node: Sized {
@@ -40,8 +37,8 @@ pub trait Node: Sized {
     fn children(&self) -> &[Self];
 
     /// Depth-first iterator over children of the node, including the root
-    fn tree(&self) -> TreeIter<Self> {
-        TreeIter::new(self)
+    fn descendants(&self) -> NodeIter<Self> {
+        NodeIter::tree(self)
     }
 
     /// Returns all text content contained within the node's tree
@@ -49,7 +46,7 @@ pub trait Node: Sized {
     where
         Self::Text: std::fmt::Display,
     {
-        self.tree()
+        self.descendants()
             .filter_map(|n| n.text())
             .map(ToString::to_string)
             .collect::<Vec<_>>()
@@ -57,41 +54,27 @@ pub trait Node: Sized {
     }
 }
 
-pub(crate) struct MapTreeIter<'a, I> {
-    iter: I,
-    _marker: PhantomData<&'a ()>,
+pub enum NodeIter<'a, N> {
+    Direct {
+        iter: std::slice::Iter<'a, N>,
+    },
+    Tree {
+        node: &'a N,
+        child: Option<Box<NodeIter<'a, N>>>,
+        next: Option<usize>,
+    },
 }
 
-impl<'a, I> MapTreeIter<'a, I> {
-    pub(crate) fn new(iter: I) -> Self {
-        Self {
-            iter,
-            _marker: PhantomData,
-        }
-    }
-}
-
-impl<'a, I, N> Iterator for MapTreeIter<'a, I>
+impl<'a, N> NodeIter<'a, N>
 where
-    N: 'a,
-    I: Iterator<Item = &'a N>,
+    N: Node,
 {
-    type Item = TreeIter<'a, N>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next().map(|n| TreeIter::new(n))
+    pub(crate) fn direct(iter: std::slice::Iter<'a, N>) -> Self {
+        Self::Direct { iter }
     }
-}
 
-pub struct TreeIter<'a, N> {
-    node: &'a N,
-    child: Option<Box<TreeIter<'a, N>>>,
-    next: Option<usize>,
-}
-
-impl<'a, N> TreeIter<'a, N> {
-    pub fn new(node: &'a N) -> Self {
-        Self {
+    pub(crate) fn tree(node: &'a N) -> Self {
+        Self::Tree {
             node,
             child: None,
             next: None,
@@ -99,33 +82,36 @@ impl<'a, N> TreeIter<'a, N> {
     }
 }
 
-impl<'a, N> Iterator for TreeIter<'a, N>
+impl<'a, N> Iterator for NodeIter<'a, N>
 where
     N: Node,
 {
     type Item = &'a N;
 
     fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            if let Some(child) = self.child.as_mut() {
-                if let Some(next) = child.next() {
-                    return Some(next);
-                }
+        match self {
+            NodeIter::Direct { iter } => iter.next(),
+            NodeIter::Tree { node, child, next } => loop {
+                if let Some(c) = child.as_mut() {
+                    if let Some(next) = c.next() {
+                        return Some(next);
+                    }
 
-                self.child = None;
-            } else if let Some(next) = self.next {
-                let children = self.node.children();
+                    *child = None;
+                } else if let Some(n) = next {
+                    let children = node.children();
 
-                if let Some(child) = children.get(next) {
-                    self.child = Some(Box::new(Self::new(child)));
-                    self.next = Some(next + 1);
+                    if let Some(c) = children.get(*n) {
+                        *child = Some(Box::new(Self::tree(c)));
+                        *next = Some(*n + 1);
+                    } else {
+                        return None;
+                    }
                 } else {
-                    return None;
+                    *next = Some(0);
+                    return Some(*node);
                 }
-            } else {
-                self.next = Some(0);
-                return Some(self.node);
-            }
+            },
         }
     }
 }

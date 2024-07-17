@@ -76,8 +76,8 @@ where
 {
     /// Query the data.
     #[must_use]
-    pub fn iter(&self) -> QueryIter<std::slice::Iter<N>, N, ()> {
-        QueryIter::new((), self.nodes.iter())
+    pub fn iter(&self) -> QueryIter<N, ()> {
+        QueryIter::new(&self.nodes, true, ())
     }
 }
 
@@ -86,7 +86,7 @@ where
     N: Node,
 {
     type Item = QueryItem<'x, N>;
-    type IntoIter = QueryIter<'x, std::slice::Iter<'x, N>, N, ()>;
+    type IntoIter = QueryIter<'x, N, ()>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()

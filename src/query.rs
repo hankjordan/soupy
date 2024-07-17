@@ -5,7 +5,7 @@ use crate::{
         Filter,
         Tag,
     },
-    node::MapTreeIter,
+    node::NodeIter,
     Node,
     Pattern,
     Soup,
@@ -14,6 +14,7 @@ use crate::{
 /// A query for elements in [`Soup`](`crate::Soup`) matching the [`Filter`](`crate::filter::Filter`) `F`
 pub struct Query<'x, N, F> {
     soup: &'x Soup<N>,
+    recursive: bool,
     filter: F,
 }
 
@@ -23,6 +24,9 @@ where
     N: Node,
     F: Filter<N>,
 {
+    /// Forces the query to only match direct children of the root node
+    fn strict(self) -> Query<'x, N, F>;
+
     /// Specifies a tag for which to search
     ///
     /// # Example
@@ -147,6 +151,14 @@ where
     N: Node,
     F: Filter<N>,
 {
+    fn strict(self) -> Query<'x, N, F> {
+        Query {
+            soup: self.soup,
+            recursive: false,
+            filter: self.filter,
+        }
+    }
+
     fn tag<T>(self, tag: T) -> Query<'x, N, And<F, Tag<T>>>
     where
         T: Pattern<N::Text>,
@@ -154,6 +166,7 @@ where
     {
         Query {
             soup: self.soup,
+            recursive: self.recursive,
             filter: And(self.filter, Tag { tag }),
         }
     }
@@ -166,6 +179,7 @@ where
     {
         Query {
             soup: self.soup,
+            recursive: self.recursive,
             filter: And(self.filter, Attr { name, value }),
         }
     }
@@ -175,6 +189,14 @@ impl<'x, N> QueryExt<'x, N, ()> for &'x Soup<N>
 where
     N: Node,
 {
+    fn strict(self) -> Query<'x, N, ()> {
+        Query {
+            soup: self,
+            recursive: false,
+            filter: (),
+        }
+    }
+
     fn tag<T>(self, tag: T) -> Query<'x, N, And<(), Tag<T>>>
     where
         T: Pattern<N::Text>,
@@ -182,6 +204,7 @@ where
     {
         Query {
             soup: self,
+            recursive: true,
             filter: And((), Tag { tag }),
         }
     }
@@ -194,6 +217,7 @@ where
     {
         Query {
             soup: self,
+            recursive: true,
             filter: And((), Attr { name, value }),
         }
     }
@@ -230,28 +254,57 @@ where
     }
 }
 
+struct MapNodeIter<'x, N> {
+    iter: Option<std::slice::Iter<'x, N>>,
+    recursive: bool,
+}
+
+impl<'x, N> MapNodeIter<'x, N> {
+    fn new(nodes: &'x [N], recursive: bool) -> Self {
+        Self {
+            iter: Some(nodes.iter()),
+            recursive,
+        }
+    }
+}
+
+impl<'x, N> Iterator for MapNodeIter<'x, N>
+where
+    N: Node,
+{
+    type Item = NodeIter<'x, N>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.recursive {
+            self.iter
+                .as_mut()
+                .and_then(|i| Some(NodeIter::tree(i.next()?)))
+        } else {
+            self.iter.take().map(|i| NodeIter::direct(i))
+        }
+    }
+}
+
 /// An [`Iterator`] over matching elements
-pub struct QueryIter<'x, I: Iterator<Item = &'x N>, N: Node + 'x, F> {
-    iter: std::iter::Flatten<MapTreeIter<'x, I>>,
+pub struct QueryIter<'x, N: Node + 'x, F> {
+    iter: std::iter::Flatten<MapNodeIter<'x, N>>,
     filter: F,
 }
 
-impl<'x, I, N, F> QueryIter<'x, I, N, F>
+impl<'x, N, F> QueryIter<'x, N, F>
 where
-    I: Iterator<Item = &'x N>,
     N: Node,
 {
-    pub(crate) fn new(filter: F, iter: I) -> Self {
+    pub(crate) fn new(nodes: &'x [N], recursive: bool, filter: F) -> Self {
         Self {
-            iter: MapTreeIter::new(iter).flatten(),
+            iter: MapNodeIter::new(nodes, recursive).flatten(),
             filter,
         }
     }
 }
 
-impl<'x, I, N, F> Iterator for QueryIter<'x, I, N, F>
+impl<'x, N, F> Iterator for QueryIter<'x, N, F>
 where
-    I: Iterator<Item = &'x N>,
     N: Node,
     F: Filter<N>,
 {
@@ -260,6 +313,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             let next = self.iter.next()?;
+
             if self.filter.matches(next) {
                 return Some(QueryItem { item: next });
             }
@@ -273,9 +327,9 @@ where
     F: Filter<N>,
 {
     type Item = QueryItem<'x, N>;
-    type IntoIter = QueryIter<'x, std::slice::Iter<'x, N>, N, F>;
+    type IntoIter = QueryIter<'x, N, F>;
 
     fn into_iter(self) -> Self::IntoIter {
-        QueryIter::new(self.filter, self.soup.nodes.iter())
+        QueryIter::new(&self.soup.nodes, self.recursive, self.filter)
     }
 }

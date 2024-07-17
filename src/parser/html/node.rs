@@ -120,6 +120,8 @@ mod tests {
                 </div>
             </div>
         </div>
+
+        <a href="https://other.com">Other Link</a>
     </body>
 
     <img class="self-closing"/>
@@ -139,7 +141,7 @@ mod tests {
             .deref()
             .clone();
 
-        let mut nodes = body.tree();
+        let mut nodes = body.descendants();
 
         assert_eq!(nodes.next().unwrap().name(), Some(&"body"));
 
@@ -182,5 +184,28 @@ mod tests {
             attrs: BTreeMap::default(),
             children: vec![HTMLNode::Text("This is a simple paragraph.")]
         });
+    }
+
+    #[test]
+    fn test_iter_order() {
+        let soup = Soup::html_strict(HELLO).expect("Failed to parse HTML");
+
+        let soup = soup
+            .tag("body")
+            .first()
+            .expect("Could not find body tag")
+            .query();
+
+        // By default, the data is searched recursively, depth-first.
+        assert_eq!(
+            soup.tag("a").first().map(|t| t.all_text()),
+            Some("Broken Link".into())
+        );
+
+        // Strict queries only match direct children, no recursion.
+        assert_eq!(
+            soup.strict().tag("a").first().map(|t| t.all_text()),
+            Some("Other Link".into())
+        );
     }
 }
