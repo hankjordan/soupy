@@ -1,7 +1,7 @@
 # Soupy
 [![][img_version]][crates] [![][img_doc]][doc] [![][img_license]][license] [![][img_downloads]][crates]
 
-`soupy` is a library for parsing and querying like BeautifulSoup.
+`soupy` is a library for querying tree-based formats, similar to BeautifulSoup. 
 
 ## Cargo Features
 
