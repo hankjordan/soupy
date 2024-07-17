@@ -43,6 +43,9 @@ pub trait Queryable<'x>: Sized {
     /// Already applied filter
     type Filter: Filter<Self::Node>;
 
+    /// Allows the query to search the entire node tree
+    fn recursive(self) -> Query<'x, Self::Node, Self::Filter>;
+
     /// Forces the query to only match direct children of the root node
     fn strict(self) -> Query<'x, Self::Node, Self::Filter>;
 
@@ -173,6 +176,14 @@ where
     type Node = N;
     type Filter = F;
 
+    fn recursive(self) -> Query<'x, N, F> {
+        Query {
+            soup: self.soup,
+            recursive: true,
+            filter: self.filter,
+        }
+    }
+
     fn strict(self) -> Query<'x, N, F> {
         Query {
             soup: self.soup,
@@ -213,6 +224,14 @@ where
 {
     type Node = N;
     type Filter = ();
+
+    fn recursive(self) -> Query<'x, N, ()> {
+        Query {
+            soup: self,
+            recursive: true,
+            filter: (),
+        }
+    }
 
     fn strict(self) -> Query<'x, N, ()> {
         Query {
