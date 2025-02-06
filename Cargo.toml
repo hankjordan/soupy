@@ -19,7 +19,7 @@ xml = ["dep:xmltree"]
 
 [dependencies]
 nom = { version = "7.1", optional = true }
-regex = { version = "1.9", optional = true }
-scraper = { version = "0.19", optional = true }
-ego-tree = { version = "0.6", optional = true }
-xmltree = { version = "0.10", optional = true }
+regex = { version = "1.11", optional = true }
+scraper = { version = "0.22", optional = true }
+ego-tree = { version = "0.10", optional = true }
+xmltree = { version = "0.11", optional = true }

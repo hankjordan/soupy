@@ -66,7 +66,10 @@ impl<'a> TryFrom<ego_tree::NodeRef<'a, scraper::Node>> for HTMLNode<scraper::Str
 
 #[cfg(test)]
 mod tests {
-    use crate::*;
+    use crate::{
+        parser::HTMLNode,
+        *,
+    };
 
     const HELLO: &str = r#"
 <!DOCTYPE html>
@@ -138,5 +141,99 @@ mod tests {
             Some("h3".into())
         );
         assert_eq!(headings.next().and_then(|h| h.name().cloned()), None);
+    }
+
+    #[test]
+    fn test_whitespace() {
+        let soup = Soup::html("<a> </a>");
+        assert_eq!(soup.nodes, [HTMLNode::Element {
+            name: "html".into(),
+            attrs: [].into(),
+            children: [
+                HTMLNode::Element {
+                    name: "head".into(),
+                    attrs: [].into(),
+                    children: [].into(),
+                },
+                HTMLNode::Element {
+                    name: "body".into(),
+                    attrs: [].into(),
+                    children: [HTMLNode::Element {
+                        name: "a".into(),
+                        attrs: [].into(),
+                        children: [HTMLNode::Text(" ".into())].into(),
+                    }]
+                    .into(),
+                }
+            ]
+            .into()
+        }]);
+
+        let soup = Soup::html(
+            r#"
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="UTF-8"/>
+        <title>Hello!</title>
+    </head>
+
+    <body>
+        <a>Link</a>
+        <span> </span>
+    </body>
+</html>"#,
+        );
+        assert_eq!(soup.nodes, [
+            HTMLNode::Doctype("html".into()),
+            HTMLNode::Element {
+                name: "html".into(),
+                attrs: [("lang".into(), "en".into())].into(),
+                children: [
+                    HTMLNode::Element {
+                        name: "head".into(),
+                        attrs: [].into(),
+                        children: [
+                            HTMLNode::Text("\n        ".into()),
+                            HTMLNode::Void {
+                                name: "meta".into(),
+                                attrs: [("charset".into(), "UTF-8".into())].into()
+                            },
+                            HTMLNode::Text("\n        ".into()),
+                            HTMLNode::Element {
+                                name: "title".into(),
+                                attrs: [].into(),
+                                children: [HTMLNode::Text("Hello!".into())].into()
+                            },
+                            HTMLNode::Text("\n    ".into()),
+                        ]
+                        .into(),
+                    },
+                    HTMLNode::Text("\n\n    ".into()),
+                    HTMLNode::Element {
+                        name: "body".into(),
+                        attrs: [].into(),
+                        children: [
+                            HTMLNode::Text("\n        ".into()),
+                            HTMLNode::Element {
+                                name: "a".into(),
+                                attrs: [].into(),
+                                children: [HTMLNode::Text("Link".into())].into(),
+                            },
+                            HTMLNode::Text("\n        ".into()),
+                            HTMLNode::Element {
+                                name: "span".into(),
+                                attrs: [].into(),
+                                children: [HTMLNode::Text(" ".into())].into(),
+                            },
+                            HTMLNode::Text("\n    \n".into())
+                        ]
+                        .into(),
+                    }
+                ]
+                .into()
+            }
+        ]);
     }
 }
