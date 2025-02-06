@@ -236,4 +236,31 @@ mod tests {
             }
         ]);
     }
+
+    #[test]
+    fn test_escaping() {
+        let soup = Soup::html(r#"<a href="&#x2F;index.html">Hello &amp; Goodbye!</a>"#);
+        assert_eq!(soup.nodes, [HTMLNode::Element {
+            name: "html".into(),
+            attrs: [].into(),
+            children: [
+                HTMLNode::Element {
+                    name: "head".into(),
+                    attrs: [].into(),
+                    children: [].into(),
+                },
+                HTMLNode::Element {
+                    name: "body".into(),
+                    attrs: [].into(),
+                    children: [HTMLNode::Element {
+                        name: "a".into(),
+                        attrs: [("href".into(), "/index.html".into())].into(),
+                        children: [HTMLNode::Text("Hello & Goodbye!".into())].into(),
+                    }]
+                    .into(),
+                }
+            ]
+            .into()
+        }]);
+    }
 }

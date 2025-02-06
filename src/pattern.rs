@@ -20,7 +20,7 @@
 ///
 /// let soup = Soup::html_strict(r#"<div id="foo"></div>"#).unwrap();
 /// let result = soup.tag(MyType("div".to_string())).first().expect("Couldn't find div with id foo");
-/// assert_eq!(result.get("id"), Some(&"foo"));
+/// assert_eq!(result.get("id"), Some(&"foo".into()));
 /// ```
 pub trait Pattern<S> {
     /// Matches the `Pattern` with the value `haystack`
@@ -50,6 +50,19 @@ where
 
     fn value(&self) -> Option<S> {
         Some((*self).into())
+    }
+}
+
+impl<S> Pattern<S> for std::borrow::Cow<'_, str>
+where
+    S: AsRef<str> + for<'a> From<&'a str>,
+{
+    fn matches(&self, haystack: &S) -> bool {
+        haystack.as_ref() == self
+    }
+
+    fn value(&self) -> Option<S> {
+        Some(self.as_ref().into())
     }
 }
 

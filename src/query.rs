@@ -56,7 +56,7 @@ pub trait Queryable<'x>: Sized {
     /// # use soupy::prelude::*;
     /// let soup = Soup::html_strict(r#"<div>Test</div><section><b id="bold-tag">SOME BOLD TEXT</b></section>"#).unwrap();
     /// let result = soup.tag("b").first().expect("Couldn't find tag 'b'");
-    /// assert_eq!(result.get("id"), Some(&"bold-tag"));
+    /// assert_eq!(result.get("id"), Some(&"bold-tag".into()));
     /// ```
     fn tag<T>(self, tag: T) -> Query<'x, Self::Node, And<Self::Filter, Tag<T>>>
     where
@@ -70,7 +70,7 @@ pub trait Queryable<'x>: Sized {
     /// # use soupy::prelude::*;
     /// let soup = Soup::html_strict(r#"<div>Test</div><section><b id="bold-tag">SOME BOLD TEXT</b></section>"#).unwrap();
     /// let result = soup.attr("id", "bold-tag").first().expect("Couldn't find tag with id 'bold-tag'");
-    /// assert_eq!(result.name(), Some(&"b"));
+    /// assert_eq!(result.name(), Some(&"b".into()));
     fn attr<Q, V>(self, name: Q, value: V) -> Query<'x, Self::Node, And<Self::Filter, Attr<Q, V>>>
     where
         Q: Pattern<<Self::Node as Node>::Text>,
@@ -84,7 +84,7 @@ pub trait Queryable<'x>: Sized {
     /// # use soupy::prelude::*;
     /// let soup = Soup::html_strict(r#"<div>Test</div><section><b id="bold-tag">SOME BOLD TEXT</b></section>"#).unwrap();
     /// let result = soup.attr_name("id").first().expect("Couldn't find element with an 'id'");
-    /// assert_eq!(result.name(), Some(&"b"));
+    /// assert_eq!(result.name(), Some(&"b".into()));
     /// ```
     fn attr_name<Q>(self, name: Q) -> Query<'x, Self::Node, And<Self::Filter, Attr<Q, bool>>>
     where
@@ -101,7 +101,7 @@ pub trait Queryable<'x>: Sized {
     /// # use soupy::prelude::*;
     /// let soup = Soup::html_strict(r#"<div>Test</div><section><b id="bold-tag">SOME BOLD TEXT</b></section>"#).unwrap();
     /// let result = soup.attr_value("bold-tag").first().expect("Couldn't find a tag with attribute value 'bold-tag'");
-    /// assert_eq!(result.name(), Some(&"b"));
+    /// assert_eq!(result.name(), Some(&"b".into()));
     /// ```
     fn attr_value<V>(self, value: V) -> Query<'x, Self::Node, And<Self::Filter, Attr<bool, V>>>
     where
@@ -120,7 +120,7 @@ pub trait Queryable<'x>: Sized {
     /// # use soupy::prelude::*;
     /// let soup = Soup::html_strict(r#"<div>Test</div><section class="content"><b id="bold-tag">SOME BOLD TEXT</b></section>"#).unwrap();
     /// let result = soup.class("content").first().expect("Couldn't find tag with class 'content'");
-    /// assert_eq!(result.name(), Some(&"section"));
+    /// assert_eq!(result.name(), Some(&"section".into()));
     fn class<C>(self, class: C) -> Query<'x, Self::Node, And<Self::Filter, Attr<&'static str, C>>>
     where
         C: Pattern<<Self::Node as Node>::Text>,
@@ -138,7 +138,7 @@ pub trait Queryable<'x>: Sized {
     /// # use soupy::prelude::*;
     /// let soup = Soup::html_strict(r#"<ul><li id="one">One</li><li id="two">Two</li><li id="three">Three</li></ul>"#).unwrap();
     /// let result = soup.tag("li").first().expect("Couldn't find 'li'");
-    /// assert_eq!(result.get("id"), Some(&"one"));
+    /// assert_eq!(result.get("id"), Some(&"one".into()));
     /// ```
     fn first(self) -> Option<Self::Item>
     where
@@ -156,9 +156,9 @@ pub trait Queryable<'x>: Sized {
     /// let soup = Soup::html_strict(r#"<ul><li id="one">One</li><li id="two">Two</li><li id="three">Three</li></ul>"#).unwrap();
     /// let results = soup.tag("li").all().collect::<Vec<_>>();
     /// assert_eq!(results.len(), 3);
-    /// assert_eq!(results[0].get("id"), Some(&"one"));
-    /// assert_eq!(results[1].get("id"), Some(&"two"));
-    /// assert_eq!(results[2].get("id"), Some(&"three"));
+    /// assert_eq!(results[0].get("id"), Some(&"one".into()));
+    /// assert_eq!(results[1].get("id"), Some(&"two".into()));
+    /// assert_eq!(results[2].get("id"), Some(&"three".into()));
     /// ```
     fn all(self) -> Self::IntoIter
     where

@@ -1,6 +1,10 @@
 #![allow(clippy::type_complexity)]
 
-use std::marker::PhantomData;
+use std::{
+    borrow::Cow,
+    collections::BTreeMap,
+    marker::PhantomData,
+};
 
 use nom::{
     branch::alt,
@@ -28,8 +32,15 @@ use nom::{
     IResult,
     Parser,
 };
+use regex::Regex;
 
-use crate::parser::html::HTMLNode;
+use crate::parser::html::{
+    entities::{
+        CODEPOINTS,
+        ENTITIES,
+    },
+    HTMLNode,
+};
 
 /// Simple, strict HTML parser
 ///
@@ -41,11 +52,11 @@ pub struct StrictHTMLParser<'a> {
 
 impl<'a> crate::parser::Parser for StrictHTMLParser<'a> {
     type Input = &'a str;
-    type Node = HTMLNode<&'a str>;
+    type Node = HTMLNode<Cow<'a, str>>;
     type Error = nom::Err<nom::error::Error<&'a str>>;
 
     fn parse(text: &'a str) -> Result<Vec<Self::Node>, Self::Error> {
-        nom::combinator::all_consuming(parse)(text).map(|r| r.1)
+        nom::combinator::all_consuming(parse_escaped)(text).map(|r| r.1)
     }
 }
 
@@ -209,8 +220,91 @@ fn single(i: &str) -> IResult<&str, HTMLNode<&str>> {
     alt((comment, doctype, void, raw_element, element, text))(i)
 }
 
-pub(crate) fn parse(i: &str) -> IResult<&str, Vec<HTMLNode<&str>>> {
+fn parse(i: &str) -> IResult<&str, Vec<HTMLNode<&str>>> {
     many0(single)(i)
+}
+
+lazy_static::lazy_static! {
+    static ref ESCAPE: Regex = Regex::new(r"&(([a-zA-Z]+;?)|(#[0-9]+;)|(#[xX][a-fA-F0-9]+;))").unwrap();
+}
+
+fn escape_ref(text: &str) -> Option<&str> {
+    if let Some(text) = ENTITIES.get(text) {
+        Some(text)
+    } else {
+        let val = text.trim_start_matches("&#").trim_end_matches(';');
+
+        let codepoint = if let Some(hex) = val.strip_prefix(['x', 'X']) {
+            u32::from_str_radix(hex, 16)
+        } else {
+            val.parse::<u32>()
+        }
+        .ok()?;
+
+        CODEPOINTS.get(&codepoint).copied()
+    }
+}
+
+fn escape_text(text: &str) -> Cow<str> {
+    let mut new = String::with_capacity(text.len());
+    let mut last = 0;
+    for m in ESCAPE.find_iter(text) {
+        new.push_str(&text[last..m.start()]);
+        if let Some(escape) = escape_ref(m.as_str()) {
+            new.push_str(escape);
+        } else {
+            new.push_str(&text[m.start()..m.end()]);
+        }
+        last = m.end();
+    }
+    new.push_str(&text[last..]);
+    new.into()
+}
+
+fn escape_attrs<'a>(attrs: BTreeMap<&'a str, &'a str>) -> BTreeMap<Cow<'a, str>, Cow<'a, str>> {
+    attrs
+        .into_iter()
+        .map(|(k, v)| (k.into(), escape_text(v)))
+        .collect()
+}
+
+fn escape_node(node: HTMLNode<&str>) -> HTMLNode<Cow<str>> {
+    #[allow(clippy::enum_glob_use)]
+    use HTMLNode::*;
+
+    match node {
+        Comment(t) => Comment(t.into()),
+        Doctype(t) => Doctype(t.into()),
+        Element {
+            name,
+            attrs,
+            children,
+        } => Element {
+            name: name.into(),
+            attrs: escape_attrs(attrs),
+            children: children.into_iter().map(escape_node).collect(),
+        },
+        RawElement {
+            name,
+            attrs,
+            content,
+        } => RawElement {
+            name: name.into(),
+            attrs: escape_attrs(attrs),
+            content: content.into(),
+        },
+        Void { name, attrs } => Void {
+            name: name.into(),
+            attrs: escape_attrs(attrs),
+        },
+        Text(t) => Text(escape_text(t)),
+    }
+}
+
+fn parse_escaped(i: &str) -> IResult<&str, Vec<HTMLNode<Cow<str>>>> {
+    let (left, nodes) = parse(i)?;
+
+    Ok((left, nodes.into_iter().map(escape_node).collect()))
 }
 
 #[allow(clippy::too_many_lines)]
@@ -577,6 +671,18 @@ if (1 < 2) {
                 },
                 HTMLNode::Text("\n"),
             ])),
+        );
+    }
+
+    #[test]
+    fn test_escaping() {
+        assert_eq!(
+            parse_escaped(r#"<a href="&#x2F;index.html">Hello &amp; Goodbye!</a>"#),
+            Ok(("", vec![HTMLNode::Element {
+                name: "a".into(),
+                attrs: [("href".into(), "/index.html".into())].into(),
+                children: [HTMLNode::Text("Hello & Goodbye!".into())].into(),
+            }]))
         );
     }
 }

@@ -143,24 +143,27 @@ mod tests {
 
         let mut nodes = body.descendants();
 
-        assert_eq!(nodes.next().unwrap().name(), Some(&"body"));
+        assert_eq!(nodes.next().unwrap().name(), Some(&"body".into()));
 
-        assert_eq!(nodes.next().unwrap(), &HTMLNode::Text("\n        "));
+        assert_eq!(nodes.next().unwrap(), &HTMLNode::Text("\n        ".into()));
 
         assert_eq!(nodes.next().unwrap(), &HTMLNode::Element {
-            name: "h1",
-            attrs: BTreeMap::default(),
-            children: vec![HTMLNode::Text("Hello World!")]
+            name: "h1".into(),
+            attrs: [].into(),
+            children: vec![HTMLNode::Text("Hello World!".into())]
         });
 
-        assert_eq!(nodes.next().unwrap(), &HTMLNode::Text("Hello World!"));
+        assert_eq!(
+            nodes.next().unwrap(),
+            &HTMLNode::Text("Hello World!".into())
+        );
 
-        assert_eq!(nodes.next().unwrap(), &HTMLNode::Text("\n        "));
+        assert_eq!(nodes.next().unwrap(), &HTMLNode::Text("\n        ".into()));
 
         assert_eq!(nodes.next().unwrap(), &HTMLNode::Element {
-            name: "p",
-            attrs: BTreeMap::default(),
-            children: vec![HTMLNode::Text("This is a simple paragraph.")]
+            name: "p".into(),
+            attrs: [].into(),
+            children: vec![HTMLNode::Text("This is a simple paragraph.".into())]
         });
     }
 
@@ -177,20 +180,20 @@ mod tests {
 
         let mut nodes = body.into_iter();
 
-        assert_eq!(nodes.next().unwrap(), &HTMLNode::Text("\n        "));
+        assert_eq!(nodes.next().unwrap(), &HTMLNode::Text("\n        ".into()));
 
         assert_eq!(nodes.next().unwrap(), &HTMLNode::Element {
-            name: "h1",
-            attrs: BTreeMap::default(),
-            children: vec![HTMLNode::Text("Hello World!")]
+            name: "h1".into(),
+            attrs: [].into(),
+            children: vec![HTMLNode::Text("Hello World!".into())]
         });
 
-        assert_eq!(nodes.next().unwrap(), &HTMLNode::Text("\n        "));
+        assert_eq!(nodes.next().unwrap(), &HTMLNode::Text("\n        ".into()));
 
         assert_eq!(nodes.next().unwrap(), &HTMLNode::Element {
-            name: "p",
-            attrs: BTreeMap::default(),
-            children: vec![HTMLNode::Text("This is a simple paragraph.")]
+            name: "p".into(),
+            attrs: [].into(),
+            children: vec![HTMLNode::Text("This is a simple paragraph.".into())]
         });
     }
 
