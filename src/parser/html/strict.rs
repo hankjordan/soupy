@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use std::marker::PhantomData;
 
 use nom::{
@@ -200,7 +202,7 @@ fn element(i: &str) -> IResult<&str, HTMLNode<&str>> {
 }
 
 fn text(i: &str) -> IResult<&str, HTMLNode<&str>> {
-    map(map(is_not("<"), str::trim), HTMLNode::Text)(i)
+    map(is_not("<"), HTMLNode::Text)(i)
 }
 
 fn single(i: &str) -> IResult<&str, HTMLNode<&str>> {
@@ -208,7 +210,7 @@ fn single(i: &str) -> IResult<&str, HTMLNode<&str>> {
 }
 
 pub(crate) fn parse(i: &str) -> IResult<&str, Vec<HTMLNode<&str>>> {
-    many0(ws(single))(i)
+    many0(single)(i)
 }
 
 #[allow(clippy::too_many_lines)]
@@ -395,6 +397,14 @@ mod test {
             }))
         );
         assert_eq!(
+            element("<a> </a>"),
+            Ok(("", HTMLNode::Element {
+                name: "a",
+                attrs: [].into(),
+                children: [HTMLNode::Text(" ")].into()
+            }))
+        );
+        assert_eq!(
             element(r#"<a rel=""></a>"#),
             Ok(("", HTMLNode::Element {
                 name: "a",
@@ -434,28 +444,30 @@ mod test {
         assert_eq!(
             parse("\t\t<!-- Hello -->\n\t<!doctype html>\n<!-- second -->"),
             Ok(("", vec![
+                HTMLNode::Text("\t\t"),
                 HTMLNode::Comment(" Hello "),
+                HTMLNode::Text("\n\t"),
                 HTMLNode::Doctype("html"),
+                HTMLNode::Text("\n"),
                 HTMLNode::Comment(" second ")
             ]))
         );
 
         assert_eq!(
             parse(
-                r#"
-                <!--Here's a link.-->
+                r#"<!--Here's a link.-->
                 <a href="https://example.com"/>
-                With some text.
-            "#
+                With some text."#
             ),
             Ok(("", vec![
                 HTMLNode::Comment("Here's a link."),
+                HTMLNode::Text("\n                "),
                 HTMLNode::Element {
                     name: "a",
                     attrs: [("href", "https://example.com")].into(),
                     children: [].into()
                 },
-                HTMLNode::Text("With some text.")
+                HTMLNode::Text("\n                With some text.")
             ])),
         );
 
@@ -469,25 +481,36 @@ mod test {
                 </div>
             "#
             ),
-            Ok(("", vec![HTMLNode::Element {
-                name: "div",
-                attrs: [("class", "outer")].into(),
-                children: vec![HTMLNode::Element {
+            Ok(("", vec![
+                HTMLNode::Text("\n                "),
+                HTMLNode::Element {
                     name: "div",
-                    attrs: [("class", "inner")].into(),
-                    children: vec![HTMLNode::Element {
-                        name: "p",
-                        attrs: [].into(),
-                        children: vec![HTMLNode::Text("Hello, world!")],
-                    }],
-                }],
-            }])),
+                    attrs: [("class", "outer")].into(),
+                    children: vec![
+                        HTMLNode::Text("\n                    "),
+                        HTMLNode::Element {
+                            name: "div",
+                            attrs: [("class", "inner")].into(),
+                            children: vec![
+                                HTMLNode::Text("\n                        "),
+                                HTMLNode::Element {
+                                    name: "p",
+                                    attrs: [].into(),
+                                    children: vec![HTMLNode::Text("Hello, world!")],
+                                },
+                                HTMLNode::Text("\n                    "),
+                            ],
+                        },
+                        HTMLNode::Text("\n                "),
+                    ],
+                },
+                HTMLNode::Text("\n            "),
+            ])),
         );
 
         assert_eq!(
             parse(
-                r#"
-<script type="application/javascript">
+                r#"<script type="application/javascript">
 if (1 < 2) {
     console.log("Hello, world!");
 }
@@ -510,38 +533,49 @@ if (1 < 2) {
                     attrs: [("type", "application/javascript")].into(),
                     content: "if (1 < 2) {\n    console.log(\"Hello, world!\");\n}",
                 },
+                HTMLNode::Text("\n"),
                 HTMLNode::Element {
                     name: "div",
                     attrs: [("class", "outer")].into(),
                     children: vec![
+                        HTMLNode::Text("\n    "),
                         HTMLNode::Element {
                             name: "div",
                             attrs: [("class", "inner")].into(),
                             children: vec![
+                                HTMLNode::Text("\n        "),
                                 HTMLNode::Element {
                                     name: "p",
                                     attrs: [].into(),
                                     children: vec![HTMLNode::Text("Hello, world!")],
                                 },
+                                HTMLNode::Text("\n        "),
                                 HTMLNode::Element {
                                     name: "p",
                                     attrs: [].into(),
                                     children: vec![HTMLNode::Text("Another element...")],
                                 },
-                                HTMLNode::Text("Just some text...")
+                                HTMLNode::Text("\n        Just some text...\n    ")
                             ],
                         },
+                        HTMLNode::Text("\n    "),
                         HTMLNode::Element {
                             name: "div",
                             attrs: [].into(),
-                            children: vec![HTMLNode::Element {
-                                name: "p",
-                                attrs: [].into(),
-                                children: vec![HTMLNode::Text("Fancy nesting")],
-                            }]
-                        }
+                            children: vec![
+                                HTMLNode::Text("\n        "),
+                                HTMLNode::Element {
+                                    name: "p",
+                                    attrs: [].into(),
+                                    children: vec![HTMLNode::Text("Fancy nesting")],
+                                },
+                                HTMLNode::Text("\n    "),
+                            ]
+                        },
+                        HTMLNode::Text("\n"),
                     ],
-                }
+                },
+                HTMLNode::Text("\n"),
             ])),
         );
     }

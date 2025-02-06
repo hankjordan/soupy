@@ -19,9 +19,9 @@ pub struct Query<'x, N, F> {
     filter: F,
 }
 
-impl<'x, N, F> Copy for Query<'x, N, F> where F: Copy {}
+impl<N, F> Copy for Query<'_, N, F> where F: Copy {}
 
-impl<'x, N, F> Clone for Query<'x, N, F>
+impl<N, F> Clone for Query<'_, N, F>
 where
     F: Clone,
 {
@@ -273,7 +273,7 @@ pub struct QueryItem<'x, N> {
     item: &'x N,
 }
 
-impl<'x, N> QueryItem<'x, N>
+impl<N> QueryItem<'_, N>
 where
     N: Node + Clone,
 {
@@ -286,7 +286,7 @@ where
     }
 }
 
-impl<'x, N> std::ops::Deref for QueryItem<'x, N> {
+impl<N> std::ops::Deref for QueryItem<'_, N> {
     type Target = N;
 
     fn deref(&self) -> &Self::Target {

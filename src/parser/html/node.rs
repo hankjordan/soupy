@@ -145,6 +145,8 @@ mod tests {
 
         assert_eq!(nodes.next().unwrap().name(), Some(&"body"));
 
+        assert_eq!(nodes.next().unwrap(), &HTMLNode::Text("\n        "));
+
         assert_eq!(nodes.next().unwrap(), &HTMLNode::Element {
             name: "h1",
             attrs: BTreeMap::default(),
@@ -152,6 +154,8 @@ mod tests {
         });
 
         assert_eq!(nodes.next().unwrap(), &HTMLNode::Text("Hello World!"));
+
+        assert_eq!(nodes.next().unwrap(), &HTMLNode::Text("\n        "));
 
         assert_eq!(nodes.next().unwrap(), &HTMLNode::Element {
             name: "p",
@@ -173,11 +177,15 @@ mod tests {
 
         let mut nodes = body.into_iter();
 
+        assert_eq!(nodes.next().unwrap(), &HTMLNode::Text("\n        "));
+
         assert_eq!(nodes.next().unwrap(), &HTMLNode::Element {
             name: "h1",
             attrs: BTreeMap::default(),
             children: vec![HTMLNode::Text("Hello World!")]
         });
+
+        assert_eq!(nodes.next().unwrap(), &HTMLNode::Text("\n        "));
 
         assert_eq!(nodes.next().unwrap(), &HTMLNode::Element {
             name: "p",

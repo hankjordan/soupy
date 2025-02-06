@@ -1,7 +1,9 @@
+#[cfg(any(feature = "html-lenient", feature = "html-strict"))]
 mod html;
 #[cfg(feature = "xml")]
 mod xml;
 
+#[cfg(any(feature = "html-lenient", feature = "html-strict"))]
 pub use html::*;
 #[cfg(feature = "xml")]
 pub use xml::*;
