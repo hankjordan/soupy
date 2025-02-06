@@ -1,3 +1,5 @@
+#[cfg(feature = "html-strict")]
+mod entities;
 #[cfg(feature = "html-lenient")]
 mod lenient;
 #[cfg(any(feature = "html-lenient", feature = "html-strict"))]
